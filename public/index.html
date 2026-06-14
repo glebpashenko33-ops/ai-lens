@@ -3,998 +3,977 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#000000">
+  <meta name="theme-color" content="#0a0a0a">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>AI Camera</title>
+  <title>AI Lens</title>
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     :root {
-      --primary: #FFD60A;
-      --bg: #000;
-      --surface: #1C1C1E;
-      --surface2: #2C2C2E;
-      --surface3: #3A3A3C;
-      --text: #fff;
-      --text2: #8E8E93;
-      --green: #30D158;
+      --gold: #FFD60A;
+      --gold2: #FF9F0A;
+      --bg: #0a0a0a;
+      --surface: #141414;
+      --surface2: #1e1e1e;
+      --surface3: #2a2a2a;
+      --border: rgba(255,255,255,0.08);
+      --text: #ffffff;
+      --text2: #888;
+      --text3: #555;
+      --green: #34C759;
       --blue: #0A84FF;
       --red: #FF453A;
-      --orange: #FF9F0A;
-      --r: 14px;
     }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
     html, body {
-      height: 100%; overflow: hidden; background: #000;
-      color: var(--text); font-family: -apple-system, 'SF Pro Display', system-ui, sans-serif;
+      height: 100%; overflow: hidden; background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, system-ui, sans-serif;
       user-select: none; -webkit-user-select: none;
     }
 
-    /* ── Screens ── */
-    .screen { position: fixed; inset: 0; display: flex; flex-direction: column; background: #000; transition: opacity 0.25s ease, transform 0.25s ease; }
-    .screen.hidden { opacity: 0; pointer-events: none; transform: scale(0.97); }
-
-    /* ── Top Bar ── */
-    .top-bar {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: env(safe-area-inset-top, 16px) 20px 12px;
-      background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent);
-      position: absolute; top: 0; left: 0; right: 0; z-index: 10;
+    /* ─── Screens ─────────────────────────────────────────────── */
+    .screen {
+      position: fixed; inset: 0; display: flex; flex-direction: column;
+      background: var(--bg);
+      transition: opacity 0.3s cubic-bezier(.4,0,.2,1), transform 0.3s cubic-bezier(.4,0,.2,1);
     }
-    .top-bar-title { font-size: 18px; font-weight: 600; letter-spacing: -0.3px; }
-    .top-bar-title span { color: var(--primary); }
-    .icon-btn {
-      width: 38px; height: 38px; border-radius: 50%; background: rgba(255,255,255,0.15);
-      border: none; color: #fff; font-size: 18px; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      backdrop-filter: blur(10px); transition: background 0.15s;
-    }
-    .icon-btn:active { background: rgba(255,255,255,0.3); }
+    .screen.hidden { opacity: 0; pointer-events: none; transform: translateY(12px); }
 
-    /* ── Camera Screen ── */
+    /* ─── Camera Screen ────────────────────────────────────────── */
     #video {
       position: absolute; inset: 0; width: 100%; height: 100%;
-      object-fit: cover; background: #111;
+      object-fit: cover; background: #000;
     }
     #canvas-capture { display: none; }
 
-    .camera-controls {
+    /* Gradient overlays */
+    .cam-top-fade {
+      position: absolute; top: 0; left: 0; right: 0; height: 160px;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 100%);
+      z-index: 2; pointer-events: none;
+    }
+    .cam-bottom-fade {
+      position: absolute; bottom: 0; left: 0; right: 0; height: 220px;
+      background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%);
+      z-index: 2; pointer-events: none;
+    }
+
+    /* Top bar */
+    .cam-top {
+      position: absolute; top: 0; left: 0; right: 0;
+      padding: calc(env(safe-area-inset-top, 14px) + 10px) 20px 0;
+      display: flex; align-items: center; justify-content: space-between;
+      z-index: 10;
+    }
+    .cam-title {
+      font-size: 17px; font-weight: 600; letter-spacing: 0.5px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .cam-title-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--gold); box-shadow: 0 0 8px var(--gold);
+    }
+
+    /* Glass button */
+    .glass-btn {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: #fff; font-size: 17px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(20px);
+      transition: background 0.2s, transform 0.15s;
+    }
+    .glass-btn:active { transform: scale(0.9); background: rgba(255,255,255,0.2); }
+
+    /* Bottom controls */
+    .cam-bottom {
       position: absolute; bottom: 0; left: 0; right: 0;
-      padding: 20px 24px calc(env(safe-area-inset-bottom, 20px) + 20px);
-      background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%);
+      padding: 0 28px calc(env(safe-area-inset-bottom, 24px) + 24px);
+      z-index: 10;
+      display: flex; flex-direction: column; gap: 20px;
+    }
+
+    /* AI Advisor button */
+    .ai-advisor-btn {
+      align-self: center;
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(10,10,10,0.6);
+      border: 1px solid rgba(255,214,10,0.4);
+      border-radius: 30px; padding: 10px 22px;
+      font-size: 14px; font-weight: 500; color: var(--gold);
+      cursor: pointer; backdrop-filter: blur(20px);
+      transition: all 0.2s; letter-spacing: 0.3px;
+    }
+    .ai-advisor-btn:active { transform: scale(0.96); }
+    .ai-advisor-btn.loading {
+      border-color: rgba(10,132,255,0.5); color: var(--blue);
+    }
+    .ai-pulse {
+      width: 8px; height: 8px; border-radius: 50%; background: currentColor;
+      animation: aiPulse 1.8s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+    @keyframes aiPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.7); }
+    }
+
+    /* Camera action row */
+    .cam-actions {
       display: flex; align-items: center; justify-content: space-between;
     }
-    .gallery-thumb {
-      width: 50px; height: 50px; border-radius: 10px;
-      background: var(--surface2); overflow: hidden; border: 2px solid rgba(255,255,255,0.3);
-      cursor: pointer; transition: transform 0.15s;
-    }
-    .gallery-thumb:active { transform: scale(0.92); }
-    .gallery-thumb img { width: 100%; height: 100%; object-fit: cover; }
-
-    .capture-btn {
-      width: 74px; height: 74px; border-radius: 50%;
-      background: transparent; border: 4px solid #fff; cursor: pointer;
+    .thumb-preview {
+      width: 52px; height: 52px; border-radius: 12px;
+      background: var(--surface3); overflow: hidden;
+      border: 2px solid rgba(255,255,255,0.15);
+      cursor: pointer; transition: transform 0.15s, border-color 0.2s;
       display: flex; align-items: center; justify-content: center;
-      transition: transform 0.12s;
-      position: relative;
+      color: var(--text3); font-size: 20px;
     }
-    .capture-btn::after {
-      content: ''; position: absolute; inset: 4px; border-radius: 50%; background: #fff;
-      transition: transform 0.12s, background 0.12s;
-    }
-    .capture-btn:active { transform: scale(0.92); }
-    .capture-btn:active::after { transform: scale(0.88); background: #ddd; }
+    .thumb-preview:active { transform: scale(0.92); }
+    .thumb-preview img { width: 100%; height: 100%; object-fit: cover; display: none; }
 
-    .switch-btn {
-      width: 50px; height: 50px; border-radius: 50%;
-      background: rgba(255,255,255,0.15); border: none; color: #fff;
-      font-size: 22px; cursor: pointer; backdrop-filter: blur(10px);
+    /* Shutter button */
+    .shutter {
+      width: 78px; height: 78px; border-radius: 50%; cursor: pointer;
+      position: relative; transition: transform 0.1s;
+    }
+    .shutter:active { transform: scale(0.9); }
+    .shutter-ring {
+      position: absolute; inset: 0; border-radius: 50%;
+      border: 3px solid rgba(255,255,255,0.9);
+    }
+    .shutter-inner {
+      position: absolute; inset: 6px; border-radius: 50%;
+      background: #fff;
+      transition: transform 0.1s, background 0.1s;
+    }
+    .shutter:active .shutter-inner { transform: scale(0.88); background: #ddd; }
+
+    /* Switch camera */
+    .switch-cam {
+      width: 52px; height: 52px; border-radius: 50%;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #fff; font-size: 22px; cursor: pointer;
       display: flex; align-items: center; justify-content: center;
-      transition: transform 0.3s;
+      backdrop-filter: blur(20px); transition: transform 0.35s, background 0.2s;
     }
-    .switch-btn:active { transform: rotate(180deg); }
+    .switch-cam:active { transform: rotate(180deg); background: rgba(255,255,255,0.2); }
 
-    /* ── AI Tips Button ── */
-    .ai-tips-btn {
-      position: absolute; left: 50%; transform: translateX(-50%);
-      bottom: calc(env(safe-area-inset-bottom, 20px) + 110px);
-      background: rgba(0,0,0,0.6); border: 1.5px solid var(--primary);
-      color: var(--primary); border-radius: 24px; padding: 9px 20px;
-      font-size: 14px; font-weight: 600; cursor: pointer; backdrop-filter: blur(12px);
-      display: flex; align-items: center; gap: 8px; white-space: nowrap;
-      transition: all 0.2s; z-index: 5;
-    }
-    .ai-tips-btn:active { transform: translateX(-50%) scale(0.95); }
-    .ai-tips-btn.loading { border-color: var(--blue); color: var(--blue); }
-    .ai-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); animation: pulse 1.5s infinite; }
-    @keyframes pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.8); } }
+    /* Grid overlay */
+    .grid-overlay { position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: 0; transition: opacity 0.3s; }
+    .grid-overlay.on { opacity: 1; }
+    .g-line { position: absolute; background: rgba(255,255,255,0.25); }
+    .g-h { left: 0; right: 0; height: 1px; }
+    .g-v { top: 0; bottom: 0; width: 1px; }
 
-    /* ── AI Tips Card ── */
+    /* Tips card */
     .tips-card {
-      position: absolute; bottom: calc(env(safe-area-inset-bottom, 20px) + 100px);
-      left: 16px; right: 16px;
-      background: rgba(0,0,0,0.85); border: 1px solid rgba(255,214,10,0.3);
-      border-radius: var(--r); padding: 16px; backdrop-filter: blur(20px);
-      transform: translateY(20px); opacity: 0; transition: all 0.3s ease;
-      pointer-events: none; z-index: 8;
+      position: absolute; left: 16px; right: 16px;
+      bottom: calc(env(safe-area-inset-bottom, 24px) + 170px);
+      background: rgba(10,10,10,0.82);
+      border: 1px solid rgba(255,214,10,0.25);
+      border-radius: 18px; padding: 18px;
+      backdrop-filter: blur(24px);
+      transform: translateY(16px); opacity: 0;
+      transition: all 0.35s cubic-bezier(.4,0,.2,1);
+      pointer-events: none; z-index: 9;
     }
-    .tips-card.visible { transform: translateY(0); opacity: 1; pointer-events: auto; }
-    .tips-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-    .tips-label { font-size: 12px; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 1px; }
-    .score-badge { background: var(--primary); color: #000; border-radius: 20px; padding: 3px 10px; font-size: 12px; font-weight: 700; }
-    .tips-list { display: flex; flex-direction: column; gap: 8px; }
-    .tip-item { display: flex; align-items: flex-start; gap: 8px; font-size: 14px; line-height: 1.4; }
-    .tip-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
-    .mood-tag { margin-top: 10px; font-size: 12px; color: var(--text2); font-style: italic; }
+    .tips-card.show { transform: translateY(0); opacity: 1; pointer-events: auto; }
+    .tips-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+    .tips-label { font-size: 11px; font-weight: 700; color: var(--gold); text-transform: uppercase; letter-spacing: 1.2px; }
+    .score-pill {
+      background: linear-gradient(135deg, var(--gold), var(--gold2));
+      color: #000; border-radius: 20px; padding: 3px 11px;
+      font-size: 12px; font-weight: 700;
+    }
+    .tip-row { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 10px; font-size: 14px; line-height: 1.45; }
+    .tip-row:last-child { margin-bottom: 0; }
+    .tip-icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+    .tips-mood { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text2); font-style: italic; }
 
-    /* ── Grid Overlay ── */
-    .grid-overlay {
-      position: absolute; inset: 0; pointer-events: none; z-index: 3;
-      opacity: 0; transition: opacity 0.3s;
+    /* ─── Preview Screen ───────────────────────────────────────── */
+    .preview-nav {
+      display: flex; align-items: center;
+      padding: calc(env(safe-area-inset-top, 14px) + 10px) 20px 14px;
+      gap: 14px; background: var(--bg);
+      border-bottom: 1px solid var(--border);
     }
-    .grid-overlay.visible { opacity: 0.3; }
-    .grid-line-h, .grid-line-v { position: absolute; background: rgba(255,255,255,0.5); }
-    .grid-line-h { left: 0; right: 0; height: 1px; }
-    .grid-line-v { top: 0; bottom: 0; width: 1px; }
+    .nav-back {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: var(--surface2); border: none;
+      color: #fff; font-size: 18px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s;
+    }
+    .nav-back:active { background: var(--surface3); }
+    .nav-title { font-size: 16px; font-weight: 600; flex: 1; }
 
-    /* ── Preview Screen ── */
-    #screen-preview { background: #000; }
-    .preview-header {
-      display: flex; align-items: center; gap: 12px;
-      padding: calc(env(safe-area-inset-top, 16px) + 4px) 16px 12px;
-      background: var(--bg);
+    .photo-frame {
+      flex: 1; min-height: 0; position: relative;
+      background: #000; overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
     }
-    .back-btn { font-size: 24px; cursor: pointer; padding: 4px 8px 4px 0; }
-    .preview-title { font-size: 17px; font-weight: 600; flex: 1; }
+    #preview-img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
 
-    .photo-container {
-      flex: 1; overflow: hidden; position: relative; min-height: 0;
+    .score-overlay {
+      position: absolute; top: 14px; right: 14px;
+      background: rgba(0,0,0,0.7); backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,214,10,0.3);
+      border-radius: 14px; padding: 10px 14px; text-align: center;
+      display: none;
     }
-    #preview-img { width: 100%; height: 100%; object-fit: contain; }
+    .score-big { font-size: 30px; font-weight: 700; color: var(--gold); line-height: 1; }
+    .score-sub { font-size: 10px; color: var(--text2); margin-top: 2px; }
 
-    .analysis-overlay {
-      position: absolute; top: 12px; right: 12px;
-      background: rgba(0,0,0,0.75); border-radius: 10px; padding: 8px 12px;
-      backdrop-filter: blur(10px); text-align: right;
+    .analysis-sheet {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 18px; overflow-y: auto; max-height: 42vh;
     }
-    .analysis-score { font-size: 28px; font-weight: 700; color: var(--primary); line-height: 1; }
-    .analysis-score-label { font-size: 11px; color: var(--text2); }
-
-    .analysis-panel {
-      background: var(--surface); border-radius: var(--r) var(--r) 0 0;
-      padding: 16px; max-height: 45vh; overflow-y: auto;
+    .loading-state { display: flex; flex-direction: column; align-items: center; padding: 28px; gap: 14px; }
+    .spinner {
+      width: 30px; height: 30px; border-radius: 50%;
+      border: 3px solid var(--surface3); border-top-color: var(--gold);
+      animation: spin 0.7s linear infinite;
     }
-    .analysis-loading { text-align: center; padding: 24px; color: var(--text2); }
-    .spinner { display: inline-block; width: 28px; height: 28px; border: 3px solid var(--surface3); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { font-size: 14px; color: var(--text2); }
 
-    .analysis-section { margin-bottom: 16px; }
-    .analysis-section-title { font-size: 12px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
-    .analysis-text { font-size: 14px; line-height: 1.5; color: var(--text); }
-    .tag-list { display: flex; flex-wrap: wrap; gap: 6px; }
-    .tag { background: var(--surface2); border-radius: 20px; padding: 5px 12px; font-size: 13px; }
-    .tag.green { background: rgba(48,209,88,0.15); color: var(--green); }
-    .tag.orange { background: rgba(255,159,10,0.15); color: var(--orange); }
+    .analysis-content { display: none; }
+    .section { margin-bottom: 18px; }
+    .section:last-child { margin-bottom: 0; }
+    .section-label { font-size: 11px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+    .section-text { font-size: 14px; line-height: 1.55; color: var(--text); }
+    .chips { display: flex; flex-wrap: wrap; gap: 7px; }
+    .chip { border-radius: 20px; padding: 5px 12px; font-size: 13px; font-weight: 500; }
+    .chip-green { background: rgba(52,199,89,0.12); color: var(--green); border: 1px solid rgba(52,199,89,0.2); }
+    .chip-gold { background: rgba(255,214,10,0.1); color: var(--gold2); border: 1px solid rgba(255,214,10,0.2); }
 
     .preview-actions {
-      display: flex; gap: 10px; padding: 12px 16px calc(env(safe-area-inset-bottom, 16px) + 12px);
-      background: var(--surface);
+      display: flex; gap: 10px;
+      padding: 14px 16px calc(env(safe-area-inset-bottom, 16px) + 14px);
+      background: var(--surface); border-top: 1px solid var(--border);
     }
-    .btn { flex: 1; height: 46px; border-radius: 12px; border: none; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 6px; }
+    .btn { flex: 1; height: 48px; border-radius: 14px; border: none; font-size: 15px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 7px; transition: all 0.15s; font-family: inherit; }
     .btn:active { transform: scale(0.96); }
-    .btn-primary { background: var(--primary); color: #000; }
-    .btn-secondary { background: var(--surface3); color: var(--text); }
-    .btn-blue { background: var(--blue); color: #fff; }
+    .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+    .btn-gold { background: linear-gradient(135deg, var(--gold) 0%, var(--gold2) 100%); color: #000; }
+    .btn-gold:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 
-    /* ── Edit Screen ── */
-    #screen-edit { background: #000; }
-    .edit-header {
-      display: flex; align-items: center; gap: 12px;
-      padding: calc(env(safe-area-inset-top, 16px) + 4px) 16px 10px;
-      background: var(--bg);
+    /* ─── Edit Screen ──────────────────────────────────────────── */
+    .edit-nav {
+      display: flex; align-items: center;
+      padding: calc(env(safe-area-inset-top, 14px) + 10px) 20px 14px;
+      gap: 14px; background: var(--bg);
+      border-bottom: 1px solid var(--border);
     }
-    .save-btn { font-size: 14px; font-weight: 600; color: var(--primary); cursor: pointer; padding: 4px; }
+    .save-action {
+      font-size: 14px; font-weight: 600;
+      color: var(--gold); cursor: pointer; padding: 6px;
+      transition: opacity 0.15s;
+    }
+    .save-action:active { opacity: 0.6; }
 
-    .canvas-wrapper {
-      flex: 1; display: flex; align-items: center; justify-content: center;
-      min-height: 0; background: #111; position: relative; overflow: hidden;
+    .canvas-stage {
+      flex: 1; min-height: 0; background: #000;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden; position: relative;
     }
     #edit-canvas { max-width: 100%; max-height: 100%; display: block; }
 
-    /* Tabs */
-    .edit-tabs {
-      display: flex; background: var(--surface); border-top: 1px solid var(--surface2);
+    /* Tab bar */
+    .tab-bar {
+      display: flex; background: var(--surface);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
     }
-    .tab-btn {
-      flex: 1; padding: 12px 4px; background: none; border: none; color: var(--text2);
-      font-size: 13px; font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent;
-      transition: all 0.2s;
+    .tab {
+      flex: 1; padding: 13px 4px; background: none; border: none;
+      color: var(--text3); font-size: 12px; font-weight: 600;
+      cursor: pointer; transition: color 0.2s;
+      border-bottom: 2px solid transparent; font-family: inherit;
+      letter-spacing: 0.3px;
     }
-    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .tab.active { color: var(--gold); border-bottom-color: var(--gold); }
 
-    .tab-panel { display: none; background: var(--surface); }
-    .tab-panel.active { display: block; }
+    .panel { display: none; background: var(--surface); }
+    .panel.active { display: block; }
 
-    /* Filters Tab */
-    .filters-scroll {
-      display: flex; gap: 10px; padding: 12px 16px;
+    /* Filters */
+    .filters-row {
+      display: flex; gap: 12px; padding: 14px 16px;
       overflow-x: auto; scrollbar-width: none;
     }
-    .filters-scroll::-webkit-scrollbar { display: none; }
-    .filter-item {
-      display: flex; flex-direction: column; align-items: center; gap: 6px;
-      cursor: pointer; flex-shrink: 0;
+    .filters-row::-webkit-scrollbar { display: none; }
+    .filter-item { display: flex; flex-direction: column; align-items: center; gap: 7px; cursor: pointer; flex-shrink: 0; }
+    .filter-ring {
+      width: 64px; height: 64px; border-radius: 16px; overflow: hidden;
+      border: 2px solid transparent; transition: border-color 0.2s, box-shadow 0.2s;
     }
-    .filter-thumb {
-      width: 60px; height: 60px; border-radius: 10px; overflow: hidden;
-      border: 2px solid transparent; transition: border-color 0.2s;
-    }
-    .filter-item.active .filter-thumb { border-color: var(--primary); }
-    .filter-thumb canvas { width: 100%; height: 100%; display: block; }
-    .filter-name { font-size: 11px; color: var(--text2); }
-    .filter-item.active .filter-name { color: var(--primary); }
+    .filter-item.active .filter-ring { border-color: var(--gold); box-shadow: 0 0 14px rgba(255,214,10,0.3); }
+    .filter-ring canvas { width: 100%; height: 100%; display: block; }
+    .filter-name { font-size: 11px; color: var(--text3); transition: color 0.2s; font-weight: 500; }
+    .filter-item.active .filter-name { color: var(--gold); }
 
-    /* Adjust Tab */
-    .sliders-panel { padding: 12px 16px; display: flex; flex-direction: column; gap: 14px; }
-    .slider-row { display: flex; flex-direction: column; gap: 6px; }
-    .slider-label { display: flex; justify-content: space-between; font-size: 13px; }
-    .slider-name { color: var(--text2); }
-    .slider-value { color: var(--text); font-weight: 600; min-width: 36px; text-align: right; }
+    /* Sliders */
+    .sliders { padding: 14px 18px; display: flex; flex-direction: column; gap: 16px; }
+    .sl-row { display: flex; flex-direction: column; gap: 8px; }
+    .sl-head { display: flex; justify-content: space-between; align-items: center; }
+    .sl-name { font-size: 13px; color: var(--text2); font-weight: 500; }
+    .sl-val { font-size: 13px; color: var(--text); font-weight: 600; min-width: 38px; text-align: right; }
     input[type=range] {
-      width: 100%; height: 4px; border-radius: 2px;
-      background: var(--surface3); outline: none; -webkit-appearance: none; appearance: none; cursor: pointer;
+      width: 100%; height: 3px; border-radius: 2px; background: var(--surface3);
+      outline: none; -webkit-appearance: none; appearance: none; cursor: pointer;
     }
     input[type=range]::-webkit-slider-thumb {
       -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%;
-      background: var(--primary); cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      background: linear-gradient(135deg, var(--gold), var(--gold2));
+      cursor: pointer; box-shadow: 0 2px 10px rgba(255,159,10,0.4);
     }
 
-    /* AI Chat Tab */
-    .chat-panel {
-      display: flex; flex-direction: column;
-      height: 220px;
-    }
-    .chat-messages {
-      flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px;
+    /* AI Chat */
+    .chat-area { display: flex; flex-direction: column; height: 222px; }
+    .chat-msgs {
+      flex: 1; overflow-y: auto; padding: 12px 14px;
+      display: flex; flex-direction: column; gap: 9px;
       scrollbar-width: none;
     }
-    .chat-messages::-webkit-scrollbar { display: none; }
-    .chat-bubble {
-      max-width: 85%; padding: 10px 14px; border-radius: 16px; font-size: 14px; line-height: 1.4;
+    .chat-msgs::-webkit-scrollbar { display: none; }
+    .bubble {
+      max-width: 82%; padding: 10px 14px; border-radius: 18px;
+      font-size: 14px; line-height: 1.45;
     }
-    .chat-bubble.user { background: var(--blue); color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }
-    .chat-bubble.ai { background: var(--surface2); color: var(--text); align-self: flex-start; border-bottom-left-radius: 4px; }
-    .chat-bubble.ai.loading { color: var(--text2); font-style: italic; }
+    .bubble.user { background: var(--blue); color: #fff; align-self: flex-end; border-bottom-right-radius: 5px; }
+    .bubble.ai { background: var(--surface2); color: var(--text); align-self: flex-start; border-bottom-left-radius: 5px; }
+    .bubble.thinking { color: var(--text3); font-style: italic; }
 
-    .chat-input-row {
-      display: flex; align-items: center; gap: 8px;
+    .chat-row {
+      display: flex; align-items: center; gap: 9px;
       padding: 10px 12px calc(env(safe-area-inset-bottom, 10px) + 10px);
-      border-top: 1px solid var(--surface2); background: var(--surface);
+      border-top: 1px solid var(--border);
     }
-    .chat-input {
-      flex: 1; background: var(--surface2); border: none; border-radius: 22px;
-      padding: 10px 16px; font-size: 14px; color: var(--text); outline: none;
-      font-family: inherit;
+    .chat-field {
+      flex: 1; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 22px; padding: 10px 16px;
+      font-size: 14px; color: var(--text); outline: none; font-family: inherit;
+      transition: border-color 0.2s;
     }
-    .chat-input::placeholder { color: var(--text2); }
-    .voice-btn {
-      width: 40px; height: 40px; border-radius: 50%; background: var(--surface3);
-      border: none; color: var(--text); font-size: 18px; cursor: pointer;
-      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-      transition: background 0.2s;
+    .chat-field:focus { border-color: rgba(10,132,255,0.4); }
+    .chat-field::placeholder { color: var(--text3); }
+    .mic-btn {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text2); font-size: 17px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; transition: all 0.2s;
     }
-    .voice-btn.listening { background: var(--red); animation: pulse 1s infinite; }
+    .mic-btn.on { background: var(--red); color: #fff; border-color: var(--red); animation: aiPulse 1s infinite; }
     .send-btn {
-      width: 40px; height: 40px; border-radius: 50%; background: var(--blue);
-      border: none; color: #fff; font-size: 18px; cursor: pointer;
-      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      width: 40px; height: 40px; border-radius: 50%;
+      background: var(--blue); border: none; color: #fff;
+      font-size: 16px; cursor: pointer; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: transform 0.15s;
     }
+    .send-btn:active { transform: scale(0.9); }
 
-    /* ── Settings Modal ── */
-    .modal-bg {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.7);
-      backdrop-filter: blur(6px); z-index: 100; display: flex;
-      align-items: flex-end; transition: opacity 0.25s;
+    /* ─── Settings Modal ───────────────────────────────────────── */
+    .overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(8px); z-index: 100;
+      display: flex; align-items: flex-end;
+      opacity: 0; transition: opacity 0.3s; pointer-events: none;
     }
-    .modal-bg.hidden { opacity: 0; pointer-events: none; }
-    .modal {
-      background: var(--surface); border-radius: var(--r) var(--r) 0 0;
-      padding: 20px 20px calc(env(safe-area-inset-bottom, 20px) + 20px);
-      width: 100%; transform: translateY(100%); transition: transform 0.3s ease;
+    .overlay.show { opacity: 1; pointer-events: auto; }
+    .sheet {
+      width: 100%; background: var(--surface);
+      border-radius: 24px 24px 0 0;
+      border-top: 1px solid var(--border);
+      padding: 24px 22px calc(env(safe-area-inset-bottom, 20px) + 22px);
+      transform: translateY(100%); transition: transform 0.35s cubic-bezier(.4,0,.2,1);
     }
-    .modal-bg:not(.hidden) .modal { transform: translateY(0); }
-    .modal-title { font-size: 17px; font-weight: 700; margin-bottom: 16px; }
-    .field-label { font-size: 13px; color: var(--text2); margin-bottom: 6px; }
-    .field-input {
-      width: 100%; background: var(--surface2); border: 1px solid var(--surface3);
-      border-radius: 10px; padding: 12px 14px; font-size: 14px; color: var(--text);
-      outline: none; font-family: inherit; margin-bottom: 16px;
+    .overlay.show .sheet { transform: translateY(0); }
+    .sheet-handle { width: 36px; height: 4px; border-radius: 2px; background: var(--surface3); margin: 0 auto 22px; }
+    .sheet-title { font-size: 18px; font-weight: 700; margin-bottom: 22px; }
+    .field-label { font-size: 12px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+    .field {
+      width: 100%; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 13px 15px;
+      font-size: 15px; color: var(--text); outline: none; font-family: inherit;
+      margin-bottom: 18px; transition: border-color 0.2s;
     }
-    .field-input:focus { border-color: var(--blue); }
-    .modal-hint { font-size: 12px; color: var(--text2); margin-bottom: 16px; line-height: 1.4; }
-    .modal-hint a { color: var(--blue); text-decoration: none; }
+    .field:focus { border-color: rgba(255,214,10,0.4); }
+    .hint { font-size: 12px; color: var(--text3); line-height: 1.5; margin-bottom: 20px; }
+    .hint a { color: var(--blue); text-decoration: none; }
   </style>
 </head>
 <body>
 
-<!-- ════════════════════════════════════════════════════════════════════════
-     SCREEN 1: CAMERA
-════════════════════════════════════════════════════════════════════════ -->
+<!-- ══════════════════════════════════════════════
+     CAMERA SCREEN
+══════════════════════════════════════════════ -->
 <div id="screen-camera" class="screen">
   <video id="video" autoplay playsinline muted></video>
   <canvas id="canvas-capture"></canvas>
 
-  <!-- Grid overlay (rule of thirds) -->
-  <div class="grid-overlay" id="grid-overlay">
-    <div class="grid-line-h" style="top:33.33%"></div>
-    <div class="grid-line-h" style="top:66.66%"></div>
-    <div class="grid-line-v" style="left:33.33%"></div>
-    <div class="grid-line-v" style="left:66.66%"></div>
+  <div class="cam-top-fade"></div>
+  <div class="cam-bottom-fade"></div>
+
+  <!-- Grid -->
+  <div class="grid-overlay" id="grid">
+    <div class="g-line g-h" style="top:33.33%"></div>
+    <div class="g-line g-h" style="top:66.66%"></div>
+    <div class="g-line g-v" style="left:33.33%"></div>
+    <div class="g-line g-v" style="left:66.66%"></div>
   </div>
 
-  <!-- Top bar -->
-  <div class="top-bar">
-    <button class="icon-btn" id="flash-btn" title="Вспышка">⚡</button>
-    <div class="top-bar-title">AI <span>Camera</span></div>
-    <button class="icon-btn" id="settings-btn" title="Настройки">⚙️</button>
-  </div>
-
-  <!-- AI Tips card -->
-  <div class="tips-card" id="tips-card">
-    <div class="tips-header">
-      <span class="tips-label">✨ AI Советник</span>
-      <span class="score-badge" id="tips-score">—</span>
+  <!-- Top -->
+  <div class="cam-top">
+    <button class="glass-btn" id="flash-btn">⚡</button>
+    <div class="cam-title">
+      <div class="cam-title-dot"></div>
+      AI Lens
     </div>
-    <div class="tips-list" id="tips-list"></div>
-    <div class="mood-tag" id="tips-mood"></div>
+    <button class="glass-btn" id="settings-btn">⚙️</button>
   </div>
 
-  <!-- AI Tips button -->
-  <button class="ai-tips-btn" id="ai-tips-btn">
-    <div class="ai-dot"></div>
-    <span id="ai-tips-label">AI Советник</span>
-  </button>
+  <!-- Tips card -->
+  <div class="tips-card" id="tips-card">
+    <div class="tips-top">
+      <span class="tips-label">✦ AI Советник</span>
+      <span class="score-pill" id="tips-score">—</span>
+    </div>
+    <div id="tips-body"></div>
+    <div class="tips-mood" id="tips-mood" style="display:none"></div>
+  </div>
+
+  <!-- Bottom -->
+  <div class="cam-bottom">
+    <button class="ai-advisor-btn" id="ai-btn">
+      <div class="ai-pulse"></div>
+      <span id="ai-btn-label">AI Советник</span>
+    </button>
+
+    <div class="cam-actions">
+      <div class="thumb-preview" id="thumb" onclick="onThumbClick()">
+        <img id="thumb-img" src="" alt="">
+        <span id="thumb-icon">🖼</span>
+      </div>
+
+      <div class="shutter" id="shutter-btn">
+        <div class="shutter-ring"></div>
+        <div class="shutter-inner"></div>
+      </div>
+
+      <button class="switch-cam" id="switch-btn">⟳</button>
+    </div>
+  </div>
 
   <!-- Grid toggle -->
-  <button class="icon-btn" id="grid-btn" style="position:absolute;left:16px;bottom:calc(env(safe-area-inset-bottom,20px)+108px);z-index:5" title="Сетка">⊞</button>
-
-  <!-- Bottom controls -->
-  <div class="camera-controls">
-    <div class="gallery-thumb" id="gallery-thumb">
-      <img id="last-photo-thumb" src="" alt="" style="display:none">
-    </div>
-    <button class="capture-btn" id="capture-btn"></button>
-    <button class="switch-btn" id="switch-btn">🔄</button>
-  </div>
+  <button class="glass-btn" id="grid-btn"
+    style="position:absolute;left:18px;bottom:calc(env(safe-area-inset-bottom,24px)+130px);z-index:10;font-size:15px">
+    ⊞
+  </button>
 </div>
 
-<!-- ════════════════════════════════════════════════════════════════════════
-     SCREEN 2: PREVIEW
-════════════════════════════════════════════════════════════════════════ -->
+<!-- ══════════════════════════════════════════════
+     PREVIEW SCREEN
+══════════════════════════════════════════════ -->
 <div id="screen-preview" class="screen hidden">
-  <div class="preview-header">
-    <div class="back-btn" id="preview-back">←</div>
-    <div class="preview-title">Анализ фото</div>
+  <div class="preview-nav">
+    <button class="nav-back" id="preview-back">←</button>
+    <div class="nav-title">Анализ фото</div>
   </div>
 
-  <div class="photo-container">
-    <img id="preview-img" src="" alt="Preview">
-    <div class="analysis-overlay" id="analysis-overlay" style="display:none">
-      <div class="analysis-score" id="analysis-score">—</div>
-      <div class="analysis-score-label">из 10</div>
+  <div class="photo-frame">
+    <img id="preview-img" src="" alt="">
+    <div class="score-overlay" id="score-overlay">
+      <div class="score-big" id="score-num">—</div>
+      <div class="score-sub">из 10</div>
     </div>
   </div>
 
-  <div class="analysis-panel">
-    <div class="analysis-loading" id="analysis-loading">
+  <div class="analysis-sheet">
+    <div class="loading-state" id="ai-loading">
       <div class="spinner"></div>
-      <div style="margin-top:10px;font-size:14px">AI анализирует фото...</div>
+      <div class="loading-text">AI анализирует фото...</div>
     </div>
-    <div id="analysis-result" style="display:none">
-      <div class="analysis-section" id="analysis-mood-section" style="display:none">
-        <div class="analysis-section-title">🎭 Настроение</div>
-        <div class="analysis-text" id="analysis-mood"></div>
+    <div class="analysis-content" id="ai-result">
+      <div class="section" id="sec-mood" style="display:none">
+        <div class="section-label">Настроение</div>
+        <div class="section-text" id="res-mood"></div>
       </div>
-      <div class="analysis-section">
-        <div class="analysis-section-title">📐 Композиция</div>
-        <div class="analysis-text" id="analysis-composition"></div>
+      <div class="section">
+        <div class="section-label">Композиция</div>
+        <div class="section-text" id="res-comp"></div>
       </div>
-      <div class="analysis-section" id="strengths-section">
-        <div class="analysis-section-title">✅ Сильные стороны</div>
-        <div class="tag-list" id="analysis-strengths"></div>
+      <div class="section">
+        <div class="section-label">Сильные стороны</div>
+        <div class="chips" id="res-strong"></div>
       </div>
-      <div class="analysis-section" id="improvements-section">
-        <div class="analysis-section-title">💡 Что улучшить</div>
-        <div class="tag-list" id="analysis-improvements"></div>
+      <div class="section">
+        <div class="section-label">Что улучшить</div>
+        <div class="chips" id="res-improve"></div>
       </div>
     </div>
   </div>
 
   <div class="preview-actions">
-    <button class="btn btn-secondary" id="preview-retake">↩ Переснять</button>
-    <button class="btn btn-primary" id="preview-edit" disabled>✏️ Редактировать</button>
+    <button class="btn btn-ghost" id="btn-retake">↩ Переснять</button>
+    <button class="btn btn-gold" id="btn-edit" disabled>✏️ Редактировать</button>
   </div>
 </div>
 
-<!-- ════════════════════════════════════════════════════════════════════════
-     SCREEN 3: EDIT
-════════════════════════════════════════════════════════════════════════ -->
+<!-- ══════════════════════════════════════════════
+     EDIT SCREEN
+══════════════════════════════════════════════ -->
 <div id="screen-edit" class="screen hidden">
-  <div class="edit-header">
-    <div class="back-btn" id="edit-back">←</div>
-    <div class="preview-title">Редактор</div>
-    <div class="save-btn" id="save-btn">💾 Сохранить</div>
+  <div class="edit-nav">
+    <button class="nav-back" id="edit-back">←</button>
+    <div class="nav-title" style="flex:1">Редактор</div>
+    <div class="save-action" id="save-btn">Сохранить</div>
   </div>
 
-  <div class="canvas-wrapper">
+  <div class="canvas-stage">
     <canvas id="edit-canvas"></canvas>
   </div>
 
-  <!-- Tabs -->
-  <div class="edit-tabs">
-    <button class="tab-btn active" data-tab="filters">🎨 Фильтры</button>
-    <button class="tab-btn" data-tab="adjust">🎛 Настройки</button>
-    <button class="tab-btn" data-tab="ai">🤖 AI Чат</button>
+  <div class="tab-bar">
+    <button class="tab active" data-tab="filters">🎨 Фильтры</button>
+    <button class="tab" data-tab="adjust">🎛 Настройки</button>
+    <button class="tab" data-tab="ai">🤖 AI Чат</button>
   </div>
 
-  <!-- Filters panel -->
-  <div class="tab-panel active" id="tab-filters">
-    <div class="filters-scroll" id="filters-row"></div>
+  <div class="panel active" id="panel-filters">
+    <div class="filters-row" id="filters-row"></div>
   </div>
-
-  <!-- Adjust panel -->
-  <div class="tab-panel" id="tab-adjust">
-    <div class="sliders-panel">
-      <div class="slider-row">
-        <div class="slider-label"><span class="slider-name">☀️ Яркость</span><span class="slider-value" id="val-brightness">100%</span></div>
-        <input type="range" id="sl-brightness" min="50" max="200" value="100">
+  <div class="panel" id="panel-adjust">
+    <div class="sliders">
+      <div class="sl-row">
+        <div class="sl-head"><span class="sl-name">☀️ Яркость</span><span class="sl-val" id="v-br">100%</span></div>
+        <input type="range" id="sl-br" min="50" max="200" value="100">
       </div>
-      <div class="slider-row">
-        <div class="slider-label"><span class="slider-name">◑ Контрастность</span><span class="slider-value" id="val-contrast">100%</span></div>
-        <input type="range" id="sl-contrast" min="50" max="200" value="100">
+      <div class="sl-row">
+        <div class="sl-head"><span class="sl-name">◑ Контраст</span><span class="sl-val" id="v-co">100%</span></div>
+        <input type="range" id="sl-co" min="50" max="200" value="100">
       </div>
-      <div class="slider-row">
-        <div class="slider-label"><span class="slider-name">🌈 Насыщенность</span><span class="slider-value" id="val-saturation">100%</span></div>
-        <input type="range" id="sl-saturation" min="0" max="300" value="100">
+      <div class="sl-row">
+        <div class="sl-head"><span class="sl-name">🌈 Насыщенность</span><span class="sl-val" id="v-sa">100%</span></div>
+        <input type="range" id="sl-sa" min="0" max="300" value="100">
       </div>
-      <div class="slider-row">
-        <div class="slider-label"><span class="slider-name">🌡 Теплота</span><span class="slider-value" id="val-warmth">0</span></div>
-        <input type="range" id="sl-warmth" min="-60" max="60" value="0">
+      <div class="sl-row">
+        <div class="sl-head"><span class="sl-name">🌡 Теплота</span><span class="sl-val" id="v-wa">0</span></div>
+        <input type="range" id="sl-wa" min="-60" max="60" value="0">
       </div>
     </div>
   </div>
-
-  <!-- AI Chat panel -->
-  <div class="tab-panel" id="tab-ai">
-    <div class="chat-panel">
-      <div class="chat-messages" id="chat-messages">
-        <div class="chat-bubble ai">Привет! Скажи или напиши что хочешь сделать с фото. Например: «Убери людей сзади», «Сделай потеплее», «Добавь контраст».</div>
+  <div class="panel" id="panel-ai">
+    <div class="chat-area">
+      <div class="chat-msgs" id="chat-msgs">
+        <div class="bubble ai">Привет! Опиши что хочешь изменить — например «убери людей сзади» или «сделай теплее».</div>
       </div>
-      <div class="chat-input-row">
-        <button class="voice-btn" id="voice-btn" title="Голосовой ввод">🎤</button>
-        <input type="text" class="chat-input" id="chat-input" placeholder="Напиши запрос...">
+      <div class="chat-row">
+        <button class="mic-btn" id="mic-btn">🎤</button>
+        <input class="chat-field" id="chat-in" type="text" placeholder="Напиши запрос...">
         <button class="send-btn" id="send-btn">➤</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ════════════════════════════════════════════════════════════════════════
-     SETTINGS MODAL
-════════════════════════════════════════════════════════════════════════ -->
-<div class="modal-bg hidden" id="settings-modal">
-  <div class="modal">
-    <div class="modal-title">⚙️ Настройки</div>
+<!-- ══════════════════════════════════════════════
+     SETTINGS SHEET
+══════════════════════════════════════════════ -->
+<div class="overlay" id="settings-overlay">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Настройки</div>
     <div class="field-label">Claude API Ключ</div>
-    <input type="password" class="field-input" id="api-key-input" placeholder="sk-ant-api03-...">
-    <div class="modal-hint">
+    <input type="password" class="field" id="api-key" placeholder="sk-ant-api03-...">
+    <div class="hint">
       Получить ключ: <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a><br>
-      Ключ хранится только в памяти браузера и не передаётся на сервер никому кроме Anthropic.
+      Ключ сохраняется в браузере и не передаётся никому кроме Anthropic.
     </div>
-    <button class="btn btn-primary" id="save-settings-btn" style="margin-top:4px">Сохранить</button>
+    <button class="btn btn-gold" id="save-settings">Сохранить</button>
   </div>
 </div>
 
 <script>
-// ════════════════════════════════════════════════════════════════════════════
-//  STATE
-// ════════════════════════════════════════════════════════════════════════════
-const state = {
+// ─── State ────────────────────────────────────────────────────────────────
+const S = {
   apiKey: localStorage.getItem('apiKey') || '',
   facingMode: 'environment',
   stream: null,
-  capturedDataUrl: null,
-  aiAnalysis: null,
+  dataUrl: null,
+  analysis: null,
   filter: 'natural',
-  adjustments: { brightness: 1, contrast: 1, saturation: 1, warmth: 0 },
-  originalImage: null,
-  isListening: false,
-  gridVisible: false,
-  flashMode: false
+  adj: { br: 1, co: 1, sa: 1, wa: 0 },
+  origImg: null,
+  listening: false,
+  grid: false
 };
 
-// ════════════════════════════════════════════════════════════════════════════
-//  CAMERA
-// ════════════════════════════════════════════════════════════════════════════
-const video = document.getElementById('video');
-const canvasCapture = document.getElementById('canvas-capture');
-const captureCtx = canvasCapture.getContext('2d');
-
-async function initCamera() {
+// ─── Camera ───────────────────────────────────────────────────────────────
+async function startCamera() {
   try {
-    if (state.stream) state.stream.getTracks().forEach(t => t.stop());
-    state.stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: state.facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
+    if (S.stream) S.stream.getTracks().forEach(t => t.stop());
+    const constraints = {
+      video: { facingMode: { ideal: S.facingMode }, width: { ideal: 1920 }, height: { ideal: 1080 } },
       audio: false
-    });
-    video.srcObject = state.stream;
+    };
+    S.stream = await navigator.mediaDevices.getUserMedia(constraints);
+    document.getElementById('video').srcObject = S.stream;
   } catch (e) {
-    alert('Нет доступа к камере: ' + e.message);
+    // Try without facingMode constraint
+    try {
+      S.stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      document.getElementById('video').srcObject = S.stream;
+    } catch (e2) {
+      console.warn('Camera not available:', e2.message);
+    }
   }
 }
 
 document.getElementById('switch-btn').addEventListener('click', () => {
-  state.facingMode = state.facingMode === 'environment' ? 'user' : 'environment';
-  initCamera();
+  S.facingMode = S.facingMode === 'environment' ? 'user' : 'environment';
+  startCamera();
 });
 
-document.getElementById('capture-btn').addEventListener('click', capturePhoto);
+document.getElementById('shutter-btn').addEventListener('click', shoot);
 
-function capturePhoto() {
-  const track = state.stream?.getVideoTracks()[0];
-  const settings = track?.getSettings() || {};
-  const w = settings.width || video.videoWidth || 1280;
-  const h = settings.height || video.videoHeight || 720;
+function shoot() {
+  const video = document.getElementById('video');
+  const c = document.getElementById('canvas-capture');
+  const w = video.videoWidth || 1280;
+  const h = video.videoHeight || 720;
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  if (S.facingMode === 'user') { ctx.save(); ctx.translate(w, 0); ctx.scale(-1, 1); }
+  ctx.drawImage(video, 0, 0, w, h);
+  if (S.facingMode === 'user') ctx.restore();
+  S.dataUrl = c.toDataURL('image/jpeg', 0.92);
 
-  canvasCapture.width = w;
-  canvasCapture.height = h;
+  const img = document.getElementById('thumb-img');
+  img.src = S.dataUrl; img.style.display = 'block';
+  document.getElementById('thumb-icon').style.display = 'none';
 
-  if (state.facingMode === 'user') {
-    captureCtx.save();
-    captureCtx.translate(w, 0);
-    captureCtx.scale(-1, 1);
-  }
-  captureCtx.drawImage(video, 0, 0, w, h);
-  if (state.facingMode === 'user') captureCtx.restore();
-
-  state.capturedDataUrl = canvasCapture.toDataURL('image/jpeg', 0.92);
-  showPreview(state.capturedDataUrl);
-
-  // Thumb
-  const thumb = document.getElementById('last-photo-thumb');
-  thumb.src = state.capturedDataUrl;
-  thumb.style.display = 'block';
+  showPreview();
 }
 
-// ════════════════════════════════════════════════════════════════════════════
-//  SCREENS
-// ════════════════════════════════════════════════════════════════════════════
-function showScreen(name) {
-  ['camera', 'preview', 'edit'].forEach(s => {
-    document.getElementById(`screen-${s}`).classList.toggle('hidden', s !== name);
-  });
+function onThumbClick() { if (S.dataUrl) showPreview(); }
+
+// ─── Screens ──────────────────────────────────────────────────────────────
+function go(name) {
+  ['camera','preview','edit'].forEach(s =>
+    document.getElementById('screen-' + s).classList.toggle('hidden', s !== name));
 }
 
-// ════════════════════════════════════════════════════════════════════════════
-//  AI API CALL
-// ════════════════════════════════════════════════════════════════════════════
-async function callAI(imageBase64, mode, message = '') {
-  if (!state.apiKey) {
-    openSettings();
-    throw new Error('Нет API ключа');
-  }
-  const res = await fetch('/api/analyze', {
+// ─── AI ───────────────────────────────────────────────────────────────────
+async function callAI(b64, mode, msg = '') {
+  if (!S.apiKey) { openSettings(); throw new Error('Нет ключа'); }
+  const r = await fetch('/api/analyze', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
-    body: JSON.stringify({ imageBase64, mode, message })
+    headers: { 'Content-Type': 'application/json', 'x-api-key': S.apiKey },
+    body: JSON.stringify({ imageBase64: b64, mode, message: msg })
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || res.statusText);
-  }
-  return res.json();
+  if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || r.statusText); }
+  return r.json();
 }
 
-function getBase64(dataUrl) {
-  return dataUrl.replace(/^data:image\/\w+;base64,/, '');
+function b64(dataUrl) { return dataUrl.replace(/^data:image\/\w+;base64,/, ''); }
+
+function frameB64() {
+  const v = document.getElementById('video');
+  const c = document.createElement('canvas');
+  c.width = Math.min(v.videoWidth || 640, 800);
+  c.height = Math.round((v.videoHeight || 480) * (c.width / (v.videoWidth || 640)));
+  c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+  return c.toDataURL('image/jpeg', 0.7).replace(/^data:image\/\w+;base64,/, '');
 }
 
-function getFrameBase64() {
-  const w = video.videoWidth || 640;
-  const h = video.videoHeight || 480;
-  const fc = document.createElement('canvas');
-  fc.width = Math.min(w, 800);
-  fc.height = Math.round(h * (fc.width / w));
-  fc.getContext('2d').drawImage(video, 0, 0, fc.width, fc.height);
-  return fc.toDataURL('image/jpeg', 0.7).replace(/^data:image\/\w+;base64,/, '');
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-//  AI TIPS (Camera screen)
-// ════════════════════════════════════════════════════════════════════════════
-const tipsBtnEl = document.getElementById('ai-tips-btn');
+// ─── Tips ─────────────────────────────────────────────────────────────────
+const aiBtn = document.getElementById('ai-btn');
+const aiLabel = document.getElementById('ai-btn-label');
 const tipsCard = document.getElementById('tips-card');
-const tipsLabel = document.getElementById('ai-tips-label');
 
-tipsBtnEl.addEventListener('click', async () => {
-  if (tipsBtnEl.classList.contains('loading')) return;
-  tipsBtnEl.classList.add('loading');
-  tipsLabel.textContent = 'Анализирую...';
-
+aiBtn.addEventListener('click', async () => {
+  if (aiBtn.classList.contains('loading')) return;
+  aiBtn.classList.add('loading'); aiLabel.textContent = 'Анализирую...';
   try {
-    const data = await callAI(getFrameBase64(), 'tips');
-    renderTips(data);
-  } catch (e) {
-    tipsLabel.textContent = 'Ошибка: ' + e.message;
-    setTimeout(() => { tipsLabel.textContent = 'AI Советник'; }, 2000);
+    const data = await callAI(frameB64(), 'tips');
+    showTips(data);
+  } catch(e) {
+    aiLabel.textContent = e.message;
+    setTimeout(() => { aiLabel.textContent = 'AI Советник'; }, 2500);
   } finally {
-    tipsBtnEl.classList.remove('loading');
-    tipsLabel.textContent = 'AI Советник';
+    aiBtn.classList.remove('loading'); aiLabel.textContent = 'AI Советник';
   }
 });
 
-function renderTips(data) {
-  const icons = ['📐', '💡', '🌅', '🎯'];
-  document.getElementById('tips-score').textContent = `${data.score || '?'}/10`;
-  document.getElementById('tips-mood').textContent = data.mood ? `✨ ${data.mood}` : '';
-  document.getElementById('tips-list').innerHTML = (data.tips || []).map((t, i) =>
-    `<div class="tip-item"><span class="tip-icon">${icons[i % icons.length]}</span><span>${t}</span></div>`
+function showTips(d) {
+  const icons = ['📐','💡','🌅','🎯','✨'];
+  document.getElementById('tips-score').textContent = d.score ? d.score + '/10' : '—';
+  document.getElementById('tips-body').innerHTML = (d.tips || []).map((t,i) =>
+    `<div class="tip-row"><span class="tip-icon">${icons[i%icons.length]}</span><span>${t}</span></div>`
   ).join('');
-  tipsCard.classList.add('visible');
-  setTimeout(() => tipsCard.classList.remove('visible'), 7000);
+  const moodEl = document.getElementById('tips-mood');
+  if (d.mood) { moodEl.textContent = '✦ ' + d.mood; moodEl.style.display = 'block'; }
+  tipsCard.classList.add('show');
+  setTimeout(() => tipsCard.classList.remove('show'), 8000);
 }
 
-// ════════════════════════════════════════════════════════════════════════════
-//  PREVIEW SCREEN
-// ════════════════════════════════════════════════════════════════════════════
-async function showPreview(dataUrl) {
-  document.getElementById('preview-img').src = dataUrl;
-  document.getElementById('analysis-overlay').style.display = 'none';
-  document.getElementById('analysis-loading').style.display = 'block';
-  document.getElementById('analysis-result').style.display = 'none';
-  document.getElementById('preview-edit').disabled = true;
-  showScreen('preview');
+// ─── Preview ──────────────────────────────────────────────────────────────
+function showPreview() {
+  document.getElementById('preview-img').src = S.dataUrl;
+  document.getElementById('score-overlay').style.display = 'none';
+  document.getElementById('ai-loading').style.display = 'flex';
+  document.getElementById('ai-result').style.display = 'none';
+  document.getElementById('btn-edit').disabled = true;
+  go('preview');
 
-  try {
-    const data = await callAI(getBase64(dataUrl), 'full');
-    state.aiAnalysis = data;
+  callAI(b64(S.dataUrl), 'full').then(data => {
+    S.analysis = data;
     renderAnalysis(data);
-  } catch (e) {
-    document.getElementById('analysis-loading').innerHTML =
-      `<div style="color:var(--red);font-size:14px">⚠️ ${e.message}</div>`;
-  }
+  }).catch(e => {
+    document.getElementById('ai-loading').innerHTML =
+      `<div style="color:var(--red);font-size:14px;text-align:center">⚠️ ${e.message}</div>`;
+  });
 }
 
-function renderAnalysis(data) {
-  document.getElementById('analysis-loading').style.display = 'none';
-  document.getElementById('analysis-result').style.display = 'block';
-
-  if (data.score) {
-    document.getElementById('analysis-score').textContent = data.score;
-    document.getElementById('analysis-overlay').style.display = 'block';
+function renderAnalysis(d) {
+  document.getElementById('ai-loading').style.display = 'none';
+  document.getElementById('ai-result').style.display = 'block';
+  if (d.score) {
+    document.getElementById('score-num').textContent = d.score;
+    document.getElementById('score-overlay').style.display = 'block';
   }
-  if (data.mood) {
-    document.getElementById('analysis-mood').textContent = data.mood;
-    document.getElementById('analysis-mood-section').style.display = 'block';
+  if (d.mood) {
+    document.getElementById('res-mood').textContent = d.mood;
+    document.getElementById('sec-mood').style.display = 'block';
   }
-  document.getElementById('analysis-composition').textContent = data.composition || '—';
-
-  const strengthsEl = document.getElementById('analysis-strengths');
-  strengthsEl.innerHTML = (data.strengths || []).map(s =>
-    `<span class="tag green">✓ ${s}</span>`).join('');
-
-  const improvEl = document.getElementById('analysis-improvements');
-  improvEl.innerHTML = (data.improvements || []).map(i =>
-    `<span class="tag orange">💡 ${i}</span>`).join('');
-
-  document.getElementById('preview-edit').disabled = false;
+  document.getElementById('res-comp').textContent = d.composition || '—';
+  document.getElementById('res-strong').innerHTML = (d.strengths||[]).map(s =>
+    `<span class="chip chip-green">✓ ${s}</span>`).join('');
+  document.getElementById('res-improve').innerHTML = (d.improvements||[]).map(i =>
+    `<span class="chip chip-gold">→ ${i}</span>`).join('');
+  document.getElementById('btn-edit').disabled = false;
 }
 
-document.getElementById('preview-back').addEventListener('click', () => showScreen('camera'));
-document.getElementById('preview-retake').addEventListener('click', () => showScreen('camera'));
-document.getElementById('preview-edit').addEventListener('click', openEditor);
+document.getElementById('preview-back').addEventListener('click', () => go('camera'));
+document.getElementById('btn-retake').addEventListener('click', () => go('camera'));
+document.getElementById('btn-edit').addEventListener('click', openEditor);
 
-// ════════════════════════════════════════════════════════════════════════════
-//  EDITOR
-// ════════════════════════════════════════════════════════════════════════════
+// ─── Editor ───────────────────────────────────────────────────────────────
 const editCanvas = document.getElementById('edit-canvas');
-const editCtx = editCanvas.getContext('2d');
+const ectx = editCanvas.getContext('2d');
 
 const FILTERS = [
-  { id: 'natural', name: 'Обычный', css: '' },
-  { id: 'warm',    name: 'Тёплый',  css: 'sepia(0.25) saturate(1.3)' },
-  { id: 'cool',    name: 'Холодный',css: 'hue-rotate(20deg) saturate(1.1)' },
-  { id: 'vivid',   name: 'Яркий',   css: 'saturate(2) contrast(1.1)' },
-  { id: 'bw',      name: 'Ч/Б',     css: 'grayscale(1)' },
-  { id: 'fade',    name: 'Фейд',    css: 'brightness(1.1) saturate(0.7) contrast(0.9)' },
-  { id: 'drama',   name: 'Драма',   css: 'contrast(1.4) saturate(1.2) brightness(0.9)' },
+  { id:'natural', name:'Обычный', css:'' },
+  { id:'warm',    name:'Тёплый',  css:'sepia(0.2) saturate(1.4)' },
+  { id:'cool',    name:'Холодный',css:'hue-rotate(20deg) saturate(1.1)' },
+  { id:'vivid',   name:'Яркий',   css:'saturate(1.9) contrast(1.1)' },
+  { id:'bw',      name:'Ч/Б',     css:'grayscale(1)' },
+  { id:'fade',    name:'Фейд',    css:'brightness(1.1) saturate(0.65) contrast(0.88)' },
+  { id:'drama',   name:'Драма',   css:'contrast(1.45) saturate(1.25) brightness(0.88)' },
+  { id:'golden',  name:'Золотой', css:'sepia(0.4) saturate(1.6) brightness(1.05)' },
 ];
 
 function openEditor() {
-  showScreen('edit');
-  initEditor();
-  if (state.aiAnalysis?.colorCorrection) applyAISuggestion(state.aiAnalysis.colorCorrection);
-}
-
-function initEditor() {
+  go('edit');
   const img = new Image();
   img.onload = () => {
-    const maxW = editCanvas.parentElement.clientWidth;
-    const maxH = editCanvas.parentElement.clientHeight;
-    const ratio = Math.min(maxW / img.width, maxH / img.height, 1);
-    editCanvas.width = img.width;
-    editCanvas.height = img.height;
+    const stage = editCanvas.parentElement;
+    const ratio = Math.min(stage.clientWidth / img.width, stage.clientHeight / img.height, 1);
+    editCanvas.width = img.width; editCanvas.height = img.height;
     editCanvas.style.width = Math.round(img.width * ratio) + 'px';
     editCanvas.style.height = Math.round(img.height * ratio) + 'px';
-    state.originalImage = img;
-    renderCanvas();
-    buildFilterThumbs(img);
+    S.origImg = img;
+    S.adj = { br: 1, co: 1, sa: 1, wa: 0 };
+    S.filter = 'natural';
+    resetSliders();
+    draw();
+    buildThumbs(img);
   };
-  img.src = state.capturedDataUrl;
-
-  // Reset adjustments
-  state.adjustments = { brightness: 1, contrast: 1, saturation: 1, warmth: 0 };
-  state.filter = 'natural';
-  setSliders(state.adjustments);
-}
-
-function applyAISuggestion(cc) {
-  state.adjustments.brightness = cc.brightness ?? 1;
-  state.adjustments.contrast   = cc.contrast   ?? 1;
-  state.adjustments.saturation = cc.saturation ?? 1;
-  state.adjustments.warmth     = cc.warmth     ?? 0;
-  setSliders(state.adjustments);
-  renderCanvas();
-}
-
-function setSliders(adj) {
-  document.getElementById('sl-brightness').value = Math.round(adj.brightness * 100);
-  document.getElementById('sl-contrast').value   = Math.round(adj.contrast   * 100);
-  document.getElementById('sl-saturation').value = Math.round(adj.saturation * 100);
-  document.getElementById('sl-warmth').value     = adj.warmth;
-  updateSliderLabels();
-}
-
-function updateSliderLabels() {
-  document.getElementById('val-brightness').textContent = document.getElementById('sl-brightness').value + '%';
-  document.getElementById('val-contrast').textContent   = document.getElementById('sl-contrast').value   + '%';
-  document.getElementById('val-saturation').textContent = document.getElementById('sl-saturation').value + '%';
-  document.getElementById('val-warmth').textContent     = document.getElementById('sl-warmth').value;
-}
-
-['brightness', 'contrast', 'saturation', 'warmth'].forEach(name => {
-  document.getElementById(`sl-${name}`).addEventListener('input', () => {
-    state.adjustments.brightness = parseInt(document.getElementById('sl-brightness').value) / 100;
-    state.adjustments.contrast   = parseInt(document.getElementById('sl-contrast').value)   / 100;
-    state.adjustments.saturation = parseInt(document.getElementById('sl-saturation').value) / 100;
-    state.adjustments.warmth     = parseInt(document.getElementById('sl-warmth').value);
-    updateSliderLabels();
-    renderCanvas();
-  });
-});
-
-function renderCanvas() {
-  if (!state.originalImage) return;
-  const { brightness, contrast, saturation, warmth } = state.adjustments;
-  const f = FILTERS.find(f => f.id === state.filter) || FILTERS[0];
-
-  editCtx.clearRect(0, 0, editCanvas.width, editCanvas.height);
-
-  const filterStr = [
-    `brightness(${brightness})`,
-    `contrast(${contrast})`,
-    `saturate(${saturation})`,
-    f.css
-  ].filter(Boolean).join(' ');
-
-  editCtx.filter = filterStr;
-  editCtx.drawImage(state.originalImage, 0, 0);
-  editCtx.filter = 'none';
-
-  // Warmth (color overlay)
-  if (warmth !== 0) {
-    editCtx.globalCompositeOperation = 'multiply';
-    const alpha = Math.abs(warmth) / 200;
-    if (warmth > 0) {
-      editCtx.fillStyle = `rgba(255, 140, 0, ${alpha})`;
-    } else {
-      editCtx.fillStyle = `rgba(0, 100, 255, ${alpha})`;
-    }
-    editCtx.fillRect(0, 0, editCanvas.width, editCanvas.height);
-    editCtx.globalCompositeOperation = 'source-over';
+  img.src = S.dataUrl;
+  if (S.analysis?.colorCorrection) {
+    const cc = S.analysis.colorCorrection;
+    S.adj = { br: cc.brightness||1, co: cc.contrast||1, sa: cc.saturation||1, wa: cc.warmth||0 };
   }
 }
 
-function buildFilterThumbs(img) {
+function resetSliders() {
+  document.getElementById('sl-br').value = Math.round(S.adj.br*100);
+  document.getElementById('sl-co').value = Math.round(S.adj.co*100);
+  document.getElementById('sl-sa').value = Math.round(S.adj.sa*100);
+  document.getElementById('sl-wa').value = S.adj.wa;
+  updateLabels();
+}
+
+function updateLabels() {
+  document.getElementById('v-br').textContent = document.getElementById('sl-br').value + '%';
+  document.getElementById('v-co').textContent = document.getElementById('sl-co').value + '%';
+  document.getElementById('v-sa').textContent = document.getElementById('sl-sa').value + '%';
+  document.getElementById('v-wa').textContent = document.getElementById('sl-wa').value;
+}
+
+['br','co','sa','wa'].forEach(k => {
+  document.getElementById('sl-' + k).addEventListener('input', () => {
+    S.adj.br = +document.getElementById('sl-br').value / 100;
+    S.adj.co = +document.getElementById('sl-co').value / 100;
+    S.adj.sa = +document.getElementById('sl-sa').value / 100;
+    S.adj.wa = +document.getElementById('sl-wa').value;
+    updateLabels(); draw();
+  });
+});
+
+function draw() {
+  if (!S.origImg) return;
+  const f = FILTERS.find(x => x.id === S.filter) || FILTERS[0];
+  const filter = [`brightness(${S.adj.br})`, `contrast(${S.adj.co})`, `saturate(${S.adj.sa})`, f.css].filter(Boolean).join(' ');
+  ectx.filter = filter;
+  ectx.drawImage(S.origImg, 0, 0);
+  ectx.filter = 'none';
+  if (S.adj.wa !== 0) {
+    ectx.globalCompositeOperation = 'multiply';
+    const a = Math.abs(S.adj.wa) / 180;
+    ectx.fillStyle = S.adj.wa > 0 ? `rgba(255,130,0,${a})` : `rgba(0,80,255,${a})`;
+    ectx.fillRect(0, 0, editCanvas.width, editCanvas.height);
+    ectx.globalCompositeOperation = 'source-over';
+  }
+}
+
+function buildThumbs(img) {
   const row = document.getElementById('filters-row');
   row.innerHTML = '';
   FILTERS.forEach(f => {
-    const div = document.createElement('div');
-    div.className = 'filter-item' + (f.id === state.filter ? ' active' : '');
-    const wrapper = document.createElement('div');
-    wrapper.className = 'filter-thumb';
-    const tc = document.createElement('canvas');
-    tc.width = 60; tc.height = 60;
+    const item = document.createElement('div');
+    item.className = 'filter-item' + (f.id === S.filter ? ' active' : '');
+    const ring = document.createElement('div'); ring.className = 'filter-ring';
+    const tc = document.createElement('canvas'); tc.width = 64; tc.height = 64;
     const ctx = tc.getContext('2d');
-    // Crop center square
     const side = Math.min(img.width, img.height);
-    const sx = (img.width - side) / 2;
-    const sy = (img.height - side) / 2;
     ctx.filter = f.css || 'none';
-    ctx.drawImage(img, sx, sy, side, side, 0, 0, 60, 60);
-    wrapper.appendChild(tc);
-    div.innerHTML = `<div class="filter-name">${f.name}</div>`;
-    div.insertBefore(wrapper, div.firstChild);
-    div.addEventListener('click', () => {
-      state.filter = f.id;
+    ctx.drawImage(img, (img.width-side)/2, (img.height-side)/2, side, side, 0, 0, 64, 64);
+    ring.appendChild(tc);
+    const name = document.createElement('div'); name.className = 'filter-name'; name.textContent = f.name;
+    item.appendChild(ring); item.appendChild(name);
+    item.addEventListener('click', () => {
+      S.filter = f.id;
       document.querySelectorAll('.filter-item').forEach(el => el.classList.remove('active'));
-      div.classList.add('active');
-      renderCanvas();
+      item.classList.add('active');
+      draw();
     });
-    row.appendChild(div);
+    row.appendChild(item);
   });
 }
 
-// ════════════════════════════════════════════════════════════════════════════
-//  SAVE PHOTO
-// ════════════════════════════════════════════════════════════════════════════
+// Save
 document.getElementById('save-btn').addEventListener('click', () => {
-  const link = document.createElement('a');
-  link.download = `ai-camera-${Date.now()}.jpg`;
-  link.href = editCanvas.toDataURL('image/jpeg', 0.95);
-  link.click();
+  const a = document.createElement('a');
+  a.download = 'ai-lens-' + Date.now() + '.jpg';
+  a.href = editCanvas.toDataURL('image/jpeg', 0.95);
+  a.click();
 });
 
-// ════════════════════════════════════════════════════════════════════════════
-//  AI CHAT (Editor)
-// ════════════════════════════════════════════════════════════════════════════
-const chatMessages = document.getElementById('chat-messages');
-const chatInput = document.getElementById('chat-input');
+// ─── AI Chat ──────────────────────────────────────────────────────────────
+const chatMsgs = document.getElementById('chat-msgs');
+const chatIn = document.getElementById('chat-in');
 
-function addChatBubble(role, text) {
-  const div = document.createElement('div');
-  div.className = `chat-bubble ${role}`;
-  div.textContent = text;
-  chatMessages.appendChild(div);
-  chatMessages.scrollTop = chatMessages.scrollHeight;
-  return div;
+function addBubble(role, text) {
+  const d = document.createElement('div');
+  d.className = 'bubble ' + role;
+  d.textContent = text;
+  chatMsgs.appendChild(d);
+  chatMsgs.scrollTop = chatMsgs.scrollHeight;
+  return d;
 }
 
-async function sendEditRequest() {
-  const text = chatInput.value.trim();
-  if (!text) return;
-  chatInput.value = '';
-  addChatBubble('user', text);
-
-  const loadingBubble = addChatBubble('ai loading', '⏳ Анализирую...');
-
+async function sendChat() {
+  const text = chatIn.value.trim(); if (!text) return;
+  chatIn.value = '';
+  addBubble('user', text);
+  const thinking = addBubble('ai thinking', '⏳ Думаю...');
   try {
-    const imgData = getBase64(state.capturedDataUrl);
-    const data = await callAI(imgData, 'edit', text);
-
-    loadingBubble.textContent = data.response || 'Готово!';
-    loadingBubble.classList.remove('loading');
-
+    const data = await callAI(b64(S.dataUrl), 'edit', text);
+    thinking.textContent = data.response || 'Готово!';
+    thinking.classList.remove('thinking');
     if (data.adjustments) {
-      applyAISuggestion(data.adjustments);
-      addChatBubble('ai', '✅ Применил настройки! Можешь дополнительно скорректировать слайдерами.');
+      const a = data.adjustments;
+      S.adj = { br: a.brightness||1, co: a.contrast||1, sa: a.saturation||1, wa: a.warmth||0 };
+      resetSliders(); draw();
+      addBubble('ai', '✅ Применил! Можешь дополнительно подкрутить слайдерами.');
     }
     if (data.removeBackground) {
-      addChatBubble('ai', '🔧 Удаление объектов требует дополнительного AI-сервиса (например, Replicate Inpainting). Функция будет добавлена в следующей версии. Пока попробуй смазать фон — перейди в Фильтры и выбери «Драма».');
+      addBubble('ai', '🔧 Удаление объектов — следующая фича. Скоро добавим!');
     }
-    if (data.suggestion) {
-      addChatBubble('ai', `💡 Совет: ${data.suggestion}`);
-    }
-  } catch (e) {
-    loadingBubble.textContent = '⚠️ Ошибка: ' + e.message;
-    loadingBubble.classList.remove('loading');
+  } catch(e) {
+    thinking.textContent = '⚠️ ' + e.message; thinking.classList.remove('thinking');
   }
 }
 
-document.getElementById('send-btn').addEventListener('click', sendEditRequest);
-chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendEditRequest(); });
+document.getElementById('send-btn').addEventListener('click', sendChat);
+chatIn.addEventListener('keydown', e => { if (e.key === 'Enter') sendChat(); });
 
-// ════════════════════════════════════════════════════════════════════════════
-//  VOICE INPUT
-// ════════════════════════════════════════════════════════════════════════════
-const voiceBtn = document.getElementById('voice-btn');
-let recognition = null;
-
+// ─── Voice ────────────────────────────────────────────────────────────────
+const micBtn = document.getElementById('mic-btn');
+let rec = null;
 if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  recognition = new SR();
-  recognition.lang = 'ru-RU';
-  recognition.continuous = false;
-  recognition.interimResults = false;
-
-  recognition.onresult = e => {
-    chatInput.value = e.results[0][0].transcript;
-    voiceBtn.classList.remove('listening');
-    state.isListening = false;
-    sendEditRequest();
-  };
-  recognition.onerror = () => {
-    voiceBtn.classList.remove('listening');
-    state.isListening = false;
-  };
-  recognition.onend = () => {
-    voiceBtn.classList.remove('listening');
-    state.isListening = false;
-  };
-
-  voiceBtn.addEventListener('click', () => {
-    if (state.isListening) { recognition.stop(); return; }
-    state.isListening = true;
-    voiceBtn.classList.add('listening');
-    recognition.start();
+  rec = new SR(); rec.lang = 'ru-RU'; rec.continuous = false;
+  rec.onresult = e => { chatIn.value = e.results[0][0].transcript; micBtn.classList.remove('on'); S.listening = false; sendChat(); };
+  rec.onend = () => { micBtn.classList.remove('on'); S.listening = false; };
+  micBtn.addEventListener('click', () => {
+    if (S.listening) { rec.stop(); return; }
+    S.listening = true; micBtn.classList.add('on'); rec.start();
   });
-} else {
-  voiceBtn.title = 'Голос не поддерживается браузером';
-  voiceBtn.style.opacity = '0.4';
-}
+} else { micBtn.style.opacity = '0.3'; micBtn.title = 'Не поддерживается'; }
 
-// ════════════════════════════════════════════════════════════════════════════
-//  TABS
-// ════════════════════════════════════════════════════════════════════════════
-document.querySelectorAll('.tab-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const tab = btn.dataset.tab;
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById(`tab-${tab}`).classList.add('active');
+// ─── Tabs ─────────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    const id = tab.dataset.tab;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + id).classList.add('active');
   });
 });
 
-// ════════════════════════════════════════════════════════════════════════════
-//  GRID OVERLAY
-// ════════════════════════════════════════════════════════════════════════════
+// ─── Grid ─────────────────────────────────────────────────────────────────
 document.getElementById('grid-btn').addEventListener('click', () => {
-  state.gridVisible = !state.gridVisible;
-  document.getElementById('grid-overlay').classList.toggle('visible', state.gridVisible);
-  document.getElementById('grid-btn').style.color = state.gridVisible ? 'var(--primary)' : '#fff';
+  S.grid = !S.grid;
+  document.getElementById('grid').classList.toggle('on', S.grid);
+  document.getElementById('grid-btn').style.color = S.grid ? 'var(--gold)' : '#fff';
 });
 
-// ════════════════════════════════════════════════════════════════════════════
-//  SETTINGS
-// ════════════════════════════════════════════════════════════════════════════
+// ─── Edit back ────────────────────────────────────────────────────────────
+document.getElementById('edit-back').addEventListener('click', () => go('preview'));
+
+// ─── Settings ─────────────────────────────────────────────────────────────
 function openSettings() {
-  const modal = document.getElementById('settings-modal');
-  modal.classList.remove('hidden');
-  document.getElementById('api-key-input').value = state.apiKey;
+  const ov = document.getElementById('settings-overlay');
+  document.getElementById('api-key').value = S.apiKey;
+  ov.classList.add('show');
 }
-
 document.getElementById('settings-btn').addEventListener('click', openSettings);
-
-document.getElementById('save-settings-btn').addEventListener('click', () => {
-  state.apiKey = document.getElementById('api-key-input').value.trim();
-  localStorage.setItem('apiKey', state.apiKey);
-  document.getElementById('settings-modal').classList.add('hidden');
+document.getElementById('settings-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('settings-overlay'))
+    document.getElementById('settings-overlay').classList.remove('show');
+});
+document.getElementById('save-settings').addEventListener('click', () => {
+  S.apiKey = document.getElementById('api-key').value.trim();
+  localStorage.setItem('apiKey', S.apiKey);
+  document.getElementById('settings-overlay').classList.remove('show');
 });
 
-document.getElementById('settings-modal').addEventListener('click', e => {
-  if (e.target === document.getElementById('settings-modal')) {
-    document.getElementById('settings-modal').classList.add('hidden');
-  }
-});
-
-// Edit back button
-document.getElementById('edit-back').addEventListener('click', () => showScreen('preview'));
-
-// Gallery thumb → open editor
-document.getElementById('gallery-thumb').addEventListener('click', () => {
-  if (state.capturedDataUrl) showPreview(state.capturedDataUrl);
-});
-
-// ════════════════════════════════════════════════════════════════════════════
-//  INIT
-// ════════════════════════════════════════════════════════════════════════════
-initCamera();
-
-// First launch — open settings if no key
-if (!state.apiKey) {
-  setTimeout(openSettings, 800);
-}
+// ─── Init ─────────────────────────────────────────────────────────────────
+startCamera();
+if (!S.apiKey) setTimeout(openSettings, 600);
 </script>
 </body>
 </html>
