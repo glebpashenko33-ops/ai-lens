@@ -3,977 +3,661 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#0a0a0a">
+  <meta name="theme-color" content="#000000">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>AI Lens</title>
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    :root {
-      --gold: #FFD60A;
-      --gold2: #FF9F0A;
-      --bg: #0a0a0a;
-      --surface: #141414;
-      --surface2: #1e1e1e;
-      --surface3: #2a2a2a;
-      --border: rgba(255,255,255,0.08);
-      --text: #ffffff;
-      --text2: #888;
-      --text3: #555;
-      --green: #34C759;
-      --blue: #0A84FF;
-      --red: #FF453A;
-    }
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
     html, body {
-      height: 100%; overflow: hidden; background: var(--bg);
-      color: var(--text);
-      font-family: 'Inter', -apple-system, system-ui, sans-serif;
+      height: 100%; overflow: hidden; background: #000;
+      color: #fff;
+      font-family: -apple-system, 'SF Pro Display', system-ui, sans-serif;
       user-select: none; -webkit-user-select: none;
     }
 
-    /* ─── Screens ─────────────────────────────────────────────── */
-    .screen {
-      position: fixed; inset: 0; display: flex; flex-direction: column;
-      background: var(--bg);
-      transition: opacity 0.3s cubic-bezier(.4,0,.2,1), transform 0.3s cubic-bezier(.4,0,.2,1);
-    }
-    .screen.hidden { opacity: 0; pointer-events: none; transform: translateY(12px); }
+    /* ─── Camera ─────────────────────────────────────────── */
+    #app { position: fixed; inset: 0; background: #000; }
 
-    /* ─── Camera Screen ────────────────────────────────────────── */
     #video {
       position: absolute; inset: 0; width: 100%; height: 100%;
       object-fit: cover; background: #000;
     }
-    #canvas-capture { display: none; }
 
-    /* Gradient overlays */
-    .cam-top-fade {
-      position: absolute; top: 0; left: 0; right: 0; height: 160px;
-      background: linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 100%);
-      z-index: 2; pointer-events: none;
-    }
-    .cam-bottom-fade {
-      position: absolute; bottom: 0; left: 0; right: 0; height: 220px;
-      background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%);
-      z-index: 2; pointer-events: none;
+    /* LUT overlay — CSS filter applied here */
+    #lut-overlay {
+      position: absolute; inset: 0;
+      pointer-events: none; z-index: 1;
+      transition: none;
     }
 
-    /* Top bar */
-    .cam-top {
+    /* Gradient fades */
+    .fade-top {
+      position: absolute; top: 0; left: 0; right: 0; height: 180px;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, transparent 100%);
+      z-index: 5; pointer-events: none;
+    }
+    .fade-bottom {
+      position: absolute; bottom: 0; left: 0; right: 0; height: 260px;
+      background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 100%);
+      z-index: 5; pointer-events: none;
+    }
+
+    /* ─── Top bar ────────────────────────────────────────── */
+    .top-bar {
       position: absolute; top: 0; left: 0; right: 0;
-      padding: calc(env(safe-area-inset-top, 14px) + 10px) 20px 0;
+      padding: calc(env(safe-area-inset-top, 14px) + 14px) 22px 0;
       display: flex; align-items: center; justify-content: space-between;
       z-index: 10;
     }
-    .cam-title {
-      font-size: 17px; font-weight: 600; letter-spacing: 0.5px;
-      display: flex; align-items: center; gap: 6px;
+
+    .ai-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: rgba(255,255,255,0.25);
+      transition: background 0.4s, box-shadow 0.4s;
+      flex-shrink: 0;
     }
-    .cam-title-dot {
-      width: 7px; height: 7px; border-radius: 50%;
-      background: var(--gold); box-shadow: 0 0 8px var(--gold);
+    .ai-dot.active {
+      background: #30d158;
+      box-shadow: 0 0 8px #30d158;
+      animation: pulse-dot 1.2s ease-in-out infinite;
+    }
+    @keyframes pulse-dot {
+      0%,100% { opacity: 1; } 50% { opacity: 0.4; }
     }
 
-    /* Glass button */
-    .glass-btn {
-      width: 40px; height: 40px; border-radius: 50%;
+    .app-title {
+      color: rgba(255,255,255,0.8);
+      font-size: 20px;
+      font-style: italic;
+      font-weight: 200;
+      letter-spacing: 1.5px;
+    }
+
+    .settings-btn {
+      width: 36px; height: 36px; border-radius: 50%;
       background: rgba(255,255,255,0.1);
-      border: 1px solid rgba(255,255,255,0.15);
-      color: #fff; font-size: 17px; cursor: pointer;
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #fff; font-size: 16px; cursor: pointer;
       display: flex; align-items: center; justify-content: center;
       backdrop-filter: blur(20px);
       transition: background 0.2s, transform 0.15s;
     }
-    .glass-btn:active { transform: scale(0.9); background: rgba(255,255,255,0.2); }
+    .settings-btn:active { transform: scale(0.9); }
 
-    /* Bottom controls */
-    .cam-bottom {
+    /* ─── REC indicator ──────────────────────────────────── */
+    .rec-badge {
+      position: absolute; top: calc(env(safe-area-inset-top, 14px) + 60px); left: 22px;
+      display: flex; align-items: center; gap: 6px;
+      opacity: 0; transition: opacity 0.3s; z-index: 10;
+    }
+    .rec-badge.show { opacity: 1; }
+    .rec-dot {
+      width: 8px; height: 8px; border-radius: 50%; background: #ff3b30;
+      animation: rec-blink 1s ease-in-out infinite;
+    }
+    @keyframes rec-blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+    .rec-time {
+      font-size: 13px; font-weight: 600; color: #fff;
+      font-variant-numeric: tabular-nums; letter-spacing: 0.5px;
+    }
+
+    /* ─── Bottom controls ────────────────────────────────── */
+    .bottom-area {
       position: absolute; bottom: 0; left: 0; right: 0;
-      padding: 0 28px calc(env(safe-area-inset-bottom, 24px) + 24px);
       z-index: 10;
-      display: flex; flex-direction: column; gap: 20px;
+      padding-bottom: calc(env(safe-area-inset-bottom, 24px) + 24px);
     }
 
-    /* AI Advisor button */
-    .ai-advisor-btn {
-      align-self: center;
-      display: flex; align-items: center; gap: 10px;
-      background: rgba(10,10,10,0.6);
-      border: 1px solid rgba(255,214,10,0.4);
-      border-radius: 30px; padding: 10px 22px;
-      font-size: 14px; font-weight: 500; color: var(--gold);
-      cursor: pointer; backdrop-filter: blur(20px);
-      transition: all 0.2s; letter-spacing: 0.3px;
+    /* Progress bar */
+    .ai-progress-track {
+      height: 1.5px; background: rgba(255,255,255,0.12); margin-bottom: 0;
     }
-    .ai-advisor-btn:active { transform: scale(0.96); }
-    .ai-advisor-btn.loading {
-      border-color: rgba(10,132,255,0.5); color: var(--blue);
-    }
-    .ai-pulse {
-      width: 8px; height: 8px; border-radius: 50%; background: currentColor;
-      animation: aiPulse 1.8s ease-in-out infinite;
-      flex-shrink: 0;
-    }
-    @keyframes aiPulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.4; transform: scale(0.7); }
+    .ai-progress-fill {
+      height: 100%; background: rgba(255,255,255,0.45);
+      transition: width 0.3s linear;
+      width: 0%;
     }
 
-    /* Camera action row */
-    .cam-actions {
+    .controls-row {
       display: flex; align-items: center; justify-content: space-between;
+      padding: 0 40px; margin-top: 22px;
     }
-    .thumb-preview {
-      width: 52px; height: 52px; border-radius: 12px;
-      background: var(--surface3); overflow: hidden;
-      border: 2px solid rgba(255,255,255,0.15);
-      cursor: pointer; transition: transform 0.15s, border-color 0.2s;
-      display: flex; align-items: center; justify-content: center;
-      color: var(--text3); font-size: 20px;
-    }
-    .thumb-preview:active { transform: scale(0.92); }
-    .thumb-preview img { width: 100%; height: 100%; object-fit: cover; display: none; }
 
-    /* Shutter button */
-    .shutter {
-      width: 78px; height: 78px; border-radius: 50%; cursor: pointer;
-      position: relative; transition: transform 0.1s;
+    /* Profile indicator */
+    .profile-display {
+      width: 90px; display: flex; flex-direction: column; align-items: center; gap: 4px;
     }
-    .shutter:active { transform: scale(0.9); }
-    .shutter-ring {
+    .profile-icon { font-size: 18px; }
+    .profile-name {
+      font-size: 11px; color: rgba(255,255,255,0.7);
+      font-weight: 300; letter-spacing: 0.3px; text-align: center;
+    }
+    .profile-transition {
+      font-size: 9px; color: rgba(255,255,255,0.35);
+      letter-spacing: 0.3px;
+    }
+
+    /* Record button */
+    .record-btn {
+      width: 76px; height: 76px; border-radius: 50%; cursor: pointer;
+      position: relative; flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .record-ring {
       position: absolute; inset: 0; border-radius: 50%;
       border: 3px solid rgba(255,255,255,0.9);
+      transition: border-color 0.2s;
     }
-    .shutter-inner {
+    .record-inner {
       position: absolute; inset: 6px; border-radius: 50%;
       background: #fff;
-      transition: transform 0.1s, background 0.1s;
+      transition: border-radius 0.25s cubic-bezier(.4,0,.2,1),
+                  background 0.2s,
+                  inset 0.25s cubic-bezier(.4,0,.2,1);
     }
-    .shutter:active .shutter-inner { transform: scale(0.88); background: #ddd; }
+    .record-btn.recording .record-inner {
+      inset: 18px;
+      border-radius: 6px;
+      background: #ff3b30;
+    }
+    .record-btn.pulsing {
+      animation: rec-pulse 1s ease-in-out infinite;
+    }
+    @keyframes rec-pulse {
+      0%,100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
 
-    /* Switch camera */
-    .switch-cam {
+    /* Flip camera */
+    .flip-btn {
       width: 52px; height: 52px; border-radius: 50%;
       background: rgba(255,255,255,0.1);
       border: 1px solid rgba(255,255,255,0.12);
       color: #fff; font-size: 22px; cursor: pointer;
       display: flex; align-items: center; justify-content: center;
-      backdrop-filter: blur(20px); transition: transform 0.35s, background 0.2s;
+      backdrop-filter: blur(20px);
+      transition: transform 0.4s cubic-bezier(.4,0,.2,1), background 0.2s;
     }
-    .switch-cam:active { transform: rotate(180deg); background: rgba(255,255,255,0.2); }
+    .flip-btn:active { transform: rotate(180deg); background: rgba(255,255,255,0.2); }
 
-    /* Grid overlay */
-    .grid-overlay { position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: 0; transition: opacity 0.3s; }
-    .grid-overlay.on { opacity: 1; }
-    .g-line { position: absolute; background: rgba(255,255,255,0.25); }
-    .g-h { left: 0; right: 0; height: 1px; }
-    .g-v { top: 0; bottom: 0; width: 1px; }
-
-    /* Tips card */
-    .tips-card {
-      position: absolute; left: 16px; right: 16px;
-      bottom: calc(env(safe-area-inset-bottom, 24px) + 170px);
-      background: rgba(10,10,10,0.82);
-      border: 1px solid rgba(255,214,10,0.25);
-      border-radius: 18px; padding: 18px;
-      backdrop-filter: blur(24px);
-      transform: translateY(16px); opacity: 0;
-      transition: all 0.35s cubic-bezier(.4,0,.2,1);
-      pointer-events: none; z-index: 9;
+    /* ─── Toast ──────────────────────────────────────────── */
+    .toast {
+      position: absolute; bottom: calc(env(safe-area-inset-bottom, 24px) + 130px);
+      left: 50%; transform: translateX(-50%) translateY(20px);
+      background: rgba(0,0,0,0.75); backdrop-filter: blur(16px);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 22px; padding: 10px 22px;
+      font-size: 14px; font-weight: 500; color: #fff;
+      opacity: 0; transition: opacity 0.25s, transform 0.25s;
+      pointer-events: none; white-space: nowrap; z-index: 20;
     }
-    .tips-card.show { transform: translateY(0); opacity: 1; pointer-events: auto; }
-    .tips-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
-    .tips-label { font-size: 11px; font-weight: 700; color: var(--gold); text-transform: uppercase; letter-spacing: 1.2px; }
-    .score-pill {
-      background: linear-gradient(135deg, var(--gold), var(--gold2));
-      color: #000; border-radius: 20px; padding: 3px 11px;
-      font-size: 12px; font-weight: 700;
-    }
-    .tip-row { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 10px; font-size: 14px; line-height: 1.45; }
-    .tip-row:last-child { margin-bottom: 0; }
-    .tip-icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
-    .tips-mood { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text2); font-style: italic; }
-
-    /* ─── Preview Screen ───────────────────────────────────────── */
-    .preview-nav {
-      display: flex; align-items: center;
-      padding: calc(env(safe-area-inset-top, 14px) + 10px) 20px 14px;
-      gap: 14px; background: var(--bg);
-      border-bottom: 1px solid var(--border);
-    }
-    .nav-back {
-      width: 36px; height: 36px; border-radius: 50%;
-      background: var(--surface2); border: none;
-      color: #fff; font-size: 18px; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      transition: background 0.15s;
-    }
-    .nav-back:active { background: var(--surface3); }
-    .nav-title { font-size: 16px; font-weight: 600; flex: 1; }
-
-    .photo-frame {
-      flex: 1; min-height: 0; position: relative;
-      background: #000; overflow: hidden;
-      display: flex; align-items: center; justify-content: center;
-    }
-    #preview-img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
-
-    .score-overlay {
-      position: absolute; top: 14px; right: 14px;
-      background: rgba(0,0,0,0.7); backdrop-filter: blur(12px);
-      border: 1px solid rgba(255,214,10,0.3);
-      border-radius: 14px; padding: 10px 14px; text-align: center;
-      display: none;
-    }
-    .score-big { font-size: 30px; font-weight: 700; color: var(--gold); line-height: 1; }
-    .score-sub { font-size: 10px; color: var(--text2); margin-top: 2px; }
-
-    .analysis-sheet {
-      background: var(--surface);
-      border-top: 1px solid var(--border);
-      padding: 18px; overflow-y: auto; max-height: 42vh;
-    }
-    .loading-state { display: flex; flex-direction: column; align-items: center; padding: 28px; gap: 14px; }
-    .spinner {
-      width: 30px; height: 30px; border-radius: 50%;
-      border: 3px solid var(--surface3); border-top-color: var(--gold);
-      animation: spin 0.7s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .loading-text { font-size: 14px; color: var(--text2); }
-
-    .analysis-content { display: none; }
-    .section { margin-bottom: 18px; }
-    .section:last-child { margin-bottom: 0; }
-    .section-label { font-size: 11px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
-    .section-text { font-size: 14px; line-height: 1.55; color: var(--text); }
-    .chips { display: flex; flex-wrap: wrap; gap: 7px; }
-    .chip { border-radius: 20px; padding: 5px 12px; font-size: 13px; font-weight: 500; }
-    .chip-green { background: rgba(52,199,89,0.12); color: var(--green); border: 1px solid rgba(52,199,89,0.2); }
-    .chip-gold { background: rgba(255,214,10,0.1); color: var(--gold2); border: 1px solid rgba(255,214,10,0.2); }
-
-    .preview-actions {
-      display: flex; gap: 10px;
-      padding: 14px 16px calc(env(safe-area-inset-bottom, 16px) + 14px);
-      background: var(--surface); border-top: 1px solid var(--border);
-    }
-    .btn { flex: 1; height: 48px; border-radius: 14px; border: none; font-size: 15px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 7px; transition: all 0.15s; font-family: inherit; }
-    .btn:active { transform: scale(0.96); }
-    .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
-    .btn-gold { background: linear-gradient(135deg, var(--gold) 0%, var(--gold2) 100%); color: #000; }
-    .btn-gold:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-
-    /* ─── Edit Screen ──────────────────────────────────────────── */
-    .edit-nav {
-      display: flex; align-items: center;
-      padding: calc(env(safe-area-inset-top, 14px) + 10px) 20px 14px;
-      gap: 14px; background: var(--bg);
-      border-bottom: 1px solid var(--border);
-    }
-    .save-action {
-      font-size: 14px; font-weight: 600;
-      color: var(--gold); cursor: pointer; padding: 6px;
-      transition: opacity 0.15s;
-    }
-    .save-action:active { opacity: 0.6; }
-
-    .canvas-stage {
-      flex: 1; min-height: 0; background: #000;
-      display: flex; align-items: center; justify-content: center;
-      overflow: hidden; position: relative;
-    }
-    #edit-canvas { max-width: 100%; max-height: 100%; display: block; }
-
-    /* Tab bar */
-    .tab-bar {
-      display: flex; background: var(--surface);
-      border-top: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
-    }
-    .tab {
-      flex: 1; padding: 13px 4px; background: none; border: none;
-      color: var(--text3); font-size: 12px; font-weight: 600;
-      cursor: pointer; transition: color 0.2s;
-      border-bottom: 2px solid transparent; font-family: inherit;
-      letter-spacing: 0.3px;
-    }
-    .tab.active { color: var(--gold); border-bottom-color: var(--gold); }
-
-    .panel { display: none; background: var(--surface); }
-    .panel.active { display: block; }
-
-    /* Filters */
-    .filters-row {
-      display: flex; gap: 12px; padding: 14px 16px;
-      overflow-x: auto; scrollbar-width: none;
-    }
-    .filters-row::-webkit-scrollbar { display: none; }
-    .filter-item { display: flex; flex-direction: column; align-items: center; gap: 7px; cursor: pointer; flex-shrink: 0; }
-    .filter-ring {
-      width: 64px; height: 64px; border-radius: 16px; overflow: hidden;
-      border: 2px solid transparent; transition: border-color 0.2s, box-shadow 0.2s;
-    }
-    .filter-item.active .filter-ring { border-color: var(--gold); box-shadow: 0 0 14px rgba(255,214,10,0.3); }
-    .filter-ring canvas { width: 100%; height: 100%; display: block; }
-    .filter-name { font-size: 11px; color: var(--text3); transition: color 0.2s; font-weight: 500; }
-    .filter-item.active .filter-name { color: var(--gold); }
-
-    /* Sliders */
-    .sliders { padding: 14px 18px; display: flex; flex-direction: column; gap: 16px; }
-    .sl-row { display: flex; flex-direction: column; gap: 8px; }
-    .sl-head { display: flex; justify-content: space-between; align-items: center; }
-    .sl-name { font-size: 13px; color: var(--text2); font-weight: 500; }
-    .sl-val { font-size: 13px; color: var(--text); font-weight: 600; min-width: 38px; text-align: right; }
-    input[type=range] {
-      width: 100%; height: 3px; border-radius: 2px; background: var(--surface3);
-      outline: none; -webkit-appearance: none; appearance: none; cursor: pointer;
-    }
-    input[type=range]::-webkit-slider-thumb {
-      -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%;
-      background: linear-gradient(135deg, var(--gold), var(--gold2));
-      cursor: pointer; box-shadow: 0 2px 10px rgba(255,159,10,0.4);
+    .toast.show {
+      opacity: 1; transform: translateX(-50%) translateY(0);
     }
 
-    /* AI Chat */
-    .chat-area { display: flex; flex-direction: column; height: 222px; }
-    .chat-msgs {
-      flex: 1; overflow-y: auto; padding: 12px 14px;
-      display: flex; flex-direction: column; gap: 9px;
-      scrollbar-width: none;
-    }
-    .chat-msgs::-webkit-scrollbar { display: none; }
-    .bubble {
-      max-width: 82%; padding: 10px 14px; border-radius: 18px;
-      font-size: 14px; line-height: 1.45;
-    }
-    .bubble.user { background: var(--blue); color: #fff; align-self: flex-end; border-bottom-right-radius: 5px; }
-    .bubble.ai { background: var(--surface2); color: var(--text); align-self: flex-start; border-bottom-left-radius: 5px; }
-    .bubble.thinking { color: var(--text3); font-style: italic; }
-
-    .chat-row {
-      display: flex; align-items: center; gap: 9px;
-      padding: 10px 12px calc(env(safe-area-inset-bottom, 10px) + 10px);
-      border-top: 1px solid var(--border);
-    }
-    .chat-field {
-      flex: 1; background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 22px; padding: 10px 16px;
-      font-size: 14px; color: var(--text); outline: none; font-family: inherit;
-      transition: border-color 0.2s;
-    }
-    .chat-field:focus { border-color: rgba(10,132,255,0.4); }
-    .chat-field::placeholder { color: var(--text3); }
-    .mic-btn {
-      width: 40px; height: 40px; border-radius: 50%;
-      background: var(--surface2); border: 1px solid var(--border);
-      color: var(--text2); font-size: 17px; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0; transition: all 0.2s;
-    }
-    .mic-btn.on { background: var(--red); color: #fff; border-color: var(--red); animation: aiPulse 1s infinite; }
-    .send-btn {
-      width: 40px; height: 40px; border-radius: 50%;
-      background: var(--blue); border: none; color: #fff;
-      font-size: 16px; cursor: pointer; flex-shrink: 0;
-      display: flex; align-items: center; justify-content: center;
-      transition: transform 0.15s;
-    }
-    .send-btn:active { transform: scale(0.9); }
-
-    /* ─── Settings Modal ───────────────────────────────────────── */
+    /* ─── Settings Sheet ─────────────────────────────────── */
     .overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.65);
-      backdrop-filter: blur(8px); z-index: 100;
+      position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(10px); z-index: 100;
       display: flex; align-items: flex-end;
       opacity: 0; transition: opacity 0.3s; pointer-events: none;
     }
     .overlay.show { opacity: 1; pointer-events: auto; }
+
     .sheet {
-      width: 100%; background: var(--surface);
+      width: 100%; background: #1a1a1a;
       border-radius: 24px 24px 0 0;
-      border-top: 1px solid var(--border);
-      padding: 24px 22px calc(env(safe-area-inset-bottom, 20px) + 22px);
+      border-top: 1px solid rgba(255,255,255,0.08);
+      padding: 24px 22px calc(env(safe-area-inset-bottom, 20px) + 24px);
       transform: translateY(100%); transition: transform 0.35s cubic-bezier(.4,0,.2,1);
     }
     .overlay.show .sheet { transform: translateY(0); }
-    .sheet-handle { width: 36px; height: 4px; border-radius: 2px; background: var(--surface3); margin: 0 auto 22px; }
-    .sheet-title { font-size: 18px; font-weight: 700; margin-bottom: 22px; }
-    .field-label { font-size: 12px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
-    .field {
-      width: 100%; background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 12px; padding: 13px 15px;
-      font-size: 15px; color: var(--text); outline: none; font-family: inherit;
-      margin-bottom: 18px; transition: border-color 0.2s;
+
+    .sheet-handle {
+      width: 36px; height: 4px; border-radius: 2px;
+      background: rgba(255,255,255,0.18); margin: 0 auto 24px;
     }
-    .field:focus { border-color: rgba(255,214,10,0.4); }
-    .hint { font-size: 12px; color: var(--text3); line-height: 1.5; margin-bottom: 20px; }
-    .hint a { color: var(--blue); text-decoration: none; }
+    .sheet-title {
+      font-size: 22px; font-weight: 200; font-style: italic;
+      color: #fff; margin-bottom: 24px; letter-spacing: 0.5px;
+    }
+
+    .field-label {
+      font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.4);
+      text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;
+    }
+    .field {
+      width: 100%; background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px; padding: 14px 16px;
+      font-size: 15px; color: #fff; outline: none;
+      font-family: inherit; margin-bottom: 10px;
+      transition: border-color 0.2s;
+    }
+    .field:focus { border-color: rgba(255,255,255,0.3); }
+    .field::placeholder { color: rgba(255,255,255,0.25); }
+
+    .last-analysis {
+      font-size: 12px; color: rgba(255,255,255,0.35);
+      margin-bottom: 22px; min-height: 16px;
+    }
+
+    .save-btn {
+      width: 100%; padding: 15px;
+      background: #fff; border: none; border-radius: 14px;
+      font-size: 16px; font-weight: 600; color: #000;
+      cursor: pointer; font-family: inherit;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .save-btn:active { opacity: 0.85; transform: scale(0.98); }
+
+    /* ─── Permission screen ──────────────────────────────── */
+    #perm-screen {
+      position: fixed; inset: 0; background: #000;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 20px;
+      z-index: 200;
+    }
+    #perm-screen.hidden { display: none; }
+    .perm-text { font-size: 18px; font-weight: 300; color: rgba(255,255,255,0.85); }
+    .perm-btn {
+      background: #fff; border: none; border-radius: 14px;
+      padding: 14px 32px; font-size: 16px; font-weight: 600;
+      color: #000; cursor: pointer; font-family: inherit;
+    }
+
+    /* ─── Download badge ─────────────────────────────────── */
+    .dl-badge {
+      position: absolute; top: calc(env(safe-area-inset-top, 14px) + 60px); right: 22px;
+      display: flex; align-items: center; gap: 7px;
+      background: rgba(0,0,0,0.6); backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.12); border-radius: 20px;
+      padding: 7px 14px; font-size: 13px; color: #fff; cursor: pointer;
+      opacity: 0; transition: opacity 0.3s; z-index: 10;
+      pointer-events: none;
+    }
+    .dl-badge.show { opacity: 1; pointer-events: auto; }
   </style>
 </head>
 <body>
 
-<!-- ══════════════════════════════════════════════
-     CAMERA SCREEN
-══════════════════════════════════════════════ -->
-<div id="screen-camera" class="screen">
+<div id="perm-screen">
+  <div class="perm-text">Нужен доступ к камере</div>
+  <button class="perm-btn" id="perm-btn">Дать доступ</button>
+</div>
+
+<div id="app">
   <video id="video" autoplay playsinline muted></video>
-  <canvas id="canvas-capture"></canvas>
+  <div id="lut-overlay"></div>
 
-  <div class="cam-top-fade"></div>
-  <div class="cam-bottom-fade"></div>
+  <div class="fade-top"></div>
+  <div class="fade-bottom"></div>
 
-  <!-- Grid -->
-  <div class="grid-overlay" id="grid">
-    <div class="g-line g-h" style="top:33.33%"></div>
-    <div class="g-line g-h" style="top:66.66%"></div>
-    <div class="g-line g-v" style="left:33.33%"></div>
-    <div class="g-line g-v" style="left:66.66%"></div>
+  <!-- Top bar -->
+  <div class="top-bar">
+    <div class="ai-dot" id="ai-dot"></div>
+    <div class="app-title">AI Lens</div>
+    <button class="settings-btn" id="settings-btn">⚙️</button>
   </div>
 
-  <!-- Top -->
-  <div class="cam-top">
-    <button class="glass-btn" id="flash-btn">⚡</button>
-    <div class="cam-title">
-      <div class="cam-title-dot"></div>
-      AI Lens
-    </div>
-    <button class="glass-btn" id="settings-btn">⚙️</button>
+  <!-- REC indicator -->
+  <div class="rec-badge" id="rec-badge">
+    <div class="rec-dot"></div>
+    <div class="rec-time" id="rec-time">0:00</div>
   </div>
 
-  <!-- Tips card -->
-  <div class="tips-card" id="tips-card">
-    <div class="tips-top">
-      <span class="tips-label">✦ AI Советник</span>
-      <span class="score-pill" id="tips-score">—</span>
-    </div>
-    <div id="tips-body"></div>
-    <div class="tips-mood" id="tips-mood" style="display:none"></div>
+  <!-- Download last video -->
+  <div class="dl-badge" id="dl-badge" onclick="downloadVideo()">
+    <span>⬇</span><span id="dl-label">Скачать видео</span>
   </div>
 
   <!-- Bottom -->
-  <div class="cam-bottom">
-    <button class="ai-advisor-btn" id="ai-btn">
-      <div class="ai-pulse"></div>
-      <span id="ai-btn-label">AI Советник</span>
-    </button>
+  <div class="bottom-area">
+    <div class="ai-progress-track">
+      <div class="ai-progress-fill" id="progress-fill"></div>
+    </div>
 
-    <div class="cam-actions">
-      <div class="thumb-preview" id="thumb" onclick="onThumbClick()">
-        <img id="thumb-img" src="" alt="">
-        <span id="thumb-icon">🖼</span>
+    <div class="controls-row">
+      <!-- Profile (left) -->
+      <div class="profile-display" id="profile-display">
+        <div class="profile-icon" id="profile-icon">☀️</div>
+        <div class="profile-name" id="profile-name">Дневной</div>
+        <div class="profile-transition" id="profile-transition"></div>
       </div>
 
-      <div class="shutter" id="shutter-btn">
-        <div class="shutter-ring"></div>
-        <div class="shutter-inner"></div>
+      <!-- Record button (center) -->
+      <div class="record-btn" id="record-btn" onclick="toggleRecord()">
+        <div class="record-ring"></div>
+        <div class="record-inner"></div>
       </div>
 
-      <button class="switch-cam" id="switch-btn">⟳</button>
+      <!-- Flip (right) -->
+      <div style="width:90px;display:flex;justify-content:center">
+        <button class="flip-btn" id="flip-btn">⟳</button>
+      </div>
     </div>
   </div>
 
-  <!-- Grid toggle -->
-  <button class="glass-btn" id="grid-btn"
-    style="position:absolute;left:18px;bottom:calc(env(safe-area-inset-bottom,24px)+130px);z-index:10;font-size:15px">
-    ⊞
-  </button>
+  <div class="toast" id="toast"></div>
 </div>
 
-<!-- ══════════════════════════════════════════════
-     PREVIEW SCREEN
-══════════════════════════════════════════════ -->
-<div id="screen-preview" class="screen hidden">
-  <div class="preview-nav">
-    <button class="nav-back" id="preview-back">←</button>
-    <div class="nav-title">Анализ фото</div>
-  </div>
-
-  <div class="photo-frame">
-    <img id="preview-img" src="" alt="">
-    <div class="score-overlay" id="score-overlay">
-      <div class="score-big" id="score-num">—</div>
-      <div class="score-sub">из 10</div>
-    </div>
-  </div>
-
-  <div class="analysis-sheet">
-    <div class="loading-state" id="ai-loading">
-      <div class="spinner"></div>
-      <div class="loading-text">AI анализирует фото...</div>
-    </div>
-    <div class="analysis-content" id="ai-result">
-      <div class="section" id="sec-mood" style="display:none">
-        <div class="section-label">Настроение</div>
-        <div class="section-text" id="res-mood"></div>
-      </div>
-      <div class="section">
-        <div class="section-label">Композиция</div>
-        <div class="section-text" id="res-comp"></div>
-      </div>
-      <div class="section">
-        <div class="section-label">Сильные стороны</div>
-        <div class="chips" id="res-strong"></div>
-      </div>
-      <div class="section">
-        <div class="section-label">Что улучшить</div>
-        <div class="chips" id="res-improve"></div>
-      </div>
-    </div>
-  </div>
-
-  <div class="preview-actions">
-    <button class="btn btn-ghost" id="btn-retake">↩ Переснять</button>
-    <button class="btn btn-gold" id="btn-edit" disabled>✏️ Редактировать</button>
-  </div>
-</div>
-
-<!-- ══════════════════════════════════════════════
-     EDIT SCREEN
-══════════════════════════════════════════════ -->
-<div id="screen-edit" class="screen hidden">
-  <div class="edit-nav">
-    <button class="nav-back" id="edit-back">←</button>
-    <div class="nav-title" style="flex:1">Редактор</div>
-    <div class="save-action" id="save-btn">Сохранить</div>
-  </div>
-
-  <div class="canvas-stage">
-    <canvas id="edit-canvas"></canvas>
-  </div>
-
-  <div class="tab-bar">
-    <button class="tab active" data-tab="filters">🎨 Фильтры</button>
-    <button class="tab" data-tab="adjust">🎛 Настройки</button>
-    <button class="tab" data-tab="ai">🤖 AI Чат</button>
-  </div>
-
-  <div class="panel active" id="panel-filters">
-    <div class="filters-row" id="filters-row"></div>
-  </div>
-  <div class="panel" id="panel-adjust">
-    <div class="sliders">
-      <div class="sl-row">
-        <div class="sl-head"><span class="sl-name">☀️ Яркость</span><span class="sl-val" id="v-br">100%</span></div>
-        <input type="range" id="sl-br" min="50" max="200" value="100">
-      </div>
-      <div class="sl-row">
-        <div class="sl-head"><span class="sl-name">◑ Контраст</span><span class="sl-val" id="v-co">100%</span></div>
-        <input type="range" id="sl-co" min="50" max="200" value="100">
-      </div>
-      <div class="sl-row">
-        <div class="sl-head"><span class="sl-name">🌈 Насыщенность</span><span class="sl-val" id="v-sa">100%</span></div>
-        <input type="range" id="sl-sa" min="0" max="300" value="100">
-      </div>
-      <div class="sl-row">
-        <div class="sl-head"><span class="sl-name">🌡 Теплота</span><span class="sl-val" id="v-wa">0</span></div>
-        <input type="range" id="sl-wa" min="-60" max="60" value="0">
-      </div>
-    </div>
-  </div>
-  <div class="panel" id="panel-ai">
-    <div class="chat-area">
-      <div class="chat-msgs" id="chat-msgs">
-        <div class="bubble ai">Привет! Опиши что хочешь изменить — например «убери людей сзади» или «сделай теплее».</div>
-      </div>
-      <div class="chat-row">
-        <button class="mic-btn" id="mic-btn">🎤</button>
-        <input class="chat-field" id="chat-in" type="text" placeholder="Напиши запрос...">
-        <button class="send-btn" id="send-btn">➤</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ══════════════════════════════════════════════
-     SETTINGS SHEET
-══════════════════════════════════════════════ -->
+<!-- Settings -->
 <div class="overlay" id="settings-overlay">
   <div class="sheet">
     <div class="sheet-handle"></div>
     <div class="sheet-title">Настройки</div>
-    <div class="field-label">Claude API Ключ</div>
-    <input type="password" class="field" id="api-key" placeholder="sk-ant-api03-...">
-    <div class="hint">
-      Получить ключ: <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a><br>
-      Ключ сохраняется в браузере и не передаётся никому кроме Anthropic.
-    </div>
-    <button class="btn btn-gold" id="save-settings">Сохранить</button>
+    <div class="field-label">Anthropic API ключ</div>
+    <input type="password" class="field" id="api-key-field" placeholder="sk-ant-...">
+    <div class="last-analysis" id="last-analysis-text"></div>
+    <button class="save-btn" id="save-settings-btn">Сохранить</button>
   </div>
 </div>
 
 <script>
-// ─── State ────────────────────────────────────────────────────────────────
-const S = {
-  apiKey: localStorage.getItem('apiKey') || '',
-  facingMode: 'environment',
-  stream: null,
-  dataUrl: null,
-  analysis: null,
-  filter: 'natural',
-  adj: { br: 1, co: 1, sa: 1, wa: 0 },
-  origImg: null,
-  listening: false,
-  grid: false
+// ─── Color Profiles ──────────────────────────────────────────────────────────
+const PROFILES = {
+  'Дневной':      { icon: '☀️', css: 'brightness(1) contrast(1) saturate(1)' },
+  'Золотой час':  { icon: '🌅', css: 'brightness(1.05) contrast(1.05) saturate(1.3) sepia(0.18)' },
+  'Пасмурно':     { icon: '☁️', css: 'brightness(0.97) contrast(1.05) saturate(0.85) hue-rotate(10deg)' },
+  'Ночной':       { icon: '🌙', css: 'brightness(1.15) contrast(0.9) saturate(0.9) sepia(0.12)' },
+  'Портрет':      { icon: '👤', css: 'brightness(1.05) contrast(0.95) saturate(1.1)' },
+  'Кино':         { icon: '🎬', css: 'brightness(0.9) contrast(1.35) saturate(1.2) hue-rotate(-5deg)' },
+  'Помещение':    { icon: '💡', css: 'brightness(1.0) contrast(1.0) saturate(0.95) hue-rotate(15deg)' },
 };
 
-// ─── Camera ───────────────────────────────────────────────────────────────
+// ─── State ───────────────────────────────────────────────────────────────────
+const S = {
+  apiKey: localStorage.getItem('ai_lens_key') || '',
+  facingMode: 'environment',
+  stream: null,
+  currentProfile: 'Дневной',
+  targetProfile: 'Дневной',
+  isRecording: false,
+  mediaRecorder: null,
+  recordedChunks: [],
+  lastVideoBlob: null,
+  recStartTime: null,
+  recTimer: null,
+  aiInterval: null,
+  progressInterval: null,
+  aiCycleStart: null,
+  AI_INTERVAL: 30000,
+  lastAnalysis: JSON.parse(localStorage.getItem('ai_lens_last') || 'null'),
+  transitioning: false,
+};
+
+// ─── Camera ───────────────────────────────────────────────────────────────────
 async function startCamera() {
   try {
     if (S.stream) S.stream.getTracks().forEach(t => t.stop());
-    const constraints = {
-      video: { facingMode: { ideal: S.facingMode }, width: { ideal: 1920 }, height: { ideal: 1080 } },
-      audio: false
-    };
-    S.stream = await navigator.mediaDevices.getUserMedia(constraints);
+    S.stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: S.facingMode },
+        width: { ideal: 1920 }, height: { ideal: 1080 },
+        frameRate: { ideal: 30 }
+      },
+      audio: true
+    });
     document.getElementById('video').srcObject = S.stream;
-  } catch (e) {
-    // Try without facingMode constraint
+    document.getElementById('perm-screen').classList.add('hidden');
+    applyProfile(S.currentProfile, false);
+    startAICycle();
+  } catch(e) {
     try {
-      S.stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      S.stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       document.getElementById('video').srcObject = S.stream;
-    } catch (e2) {
-      console.warn('Camera not available:', e2.message);
+      document.getElementById('perm-screen').classList.add('hidden');
+      startAICycle();
+    } catch(e2) {
+      console.warn('Camera error:', e2.message);
     }
   }
 }
 
-document.getElementById('switch-btn').addEventListener('click', () => {
+document.getElementById('perm-btn').addEventListener('click', startCamera);
+document.getElementById('flip-btn').addEventListener('click', () => {
   S.facingMode = S.facingMode === 'environment' ? 'user' : 'environment';
   startCamera();
+  // Trigger AI on camera switch
+  setTimeout(runAI, 500);
 });
 
-document.getElementById('shutter-btn').addEventListener('click', shoot);
+// ─── LUT / Color Profile ─────────────────────────────────────────────────────
+function applyProfile(name, animate = true) {
+  const p = PROFILES[name];
+  if (!p) return;
 
-function shoot() {
-  const video = document.getElementById('video');
-  const c = document.getElementById('canvas-capture');
-  const w = video.videoWidth || 1280;
-  const h = video.videoHeight || 720;
-  c.width = w; c.height = h;
-  const ctx = c.getContext('2d');
-  if (S.facingMode === 'user') { ctx.save(); ctx.translate(w, 0); ctx.scale(-1, 1); }
-  ctx.drawImage(video, 0, 0, w, h);
-  if (S.facingMode === 'user') ctx.restore();
-  S.dataUrl = c.toDataURL('image/jpeg', 0.92);
+  if (animate && S.currentProfile !== name) {
+    S.transitioning = true;
+    document.getElementById('profile-transition').textContent = '• обновление';
 
-  const img = document.getElementById('thumb-img');
-  img.src = S.dataUrl; img.style.display = 'block';
-  document.getElementById('thumb-icon').style.display = 'none';
+    // Smooth transition via opacity fade on overlay
+    const overlay = document.getElementById('lut-overlay');
+    overlay.style.transition = 'opacity 0.5s ease';
+    overlay.style.opacity = '0';
 
-  showPreview();
+    setTimeout(() => {
+      overlay.style.filter = p.css;
+      overlay.style.opacity = '1';
+      setTimeout(() => {
+        overlay.style.transition = 'none';
+        S.transitioning = false;
+        document.getElementById('profile-transition').textContent = '';
+      }, 500);
+    }, 250);
+  } else {
+    document.getElementById('lut-overlay').style.filter = p.css;
+    document.getElementById('lut-overlay').style.opacity = '1';
+  }
+
+  // Apply the filter on video directly too
+  document.getElementById('video').style.filter = p.css;
+
+  S.currentProfile = name;
+  document.getElementById('profile-icon').textContent = p.icon;
+  document.getElementById('profile-name').textContent = name;
+
+  // Save
+  localStorage.setItem('ai_lens_profile', name);
 }
 
-function onThumbClick() { if (S.dataUrl) showPreview(); }
-
-// ─── Screens ──────────────────────────────────────────────────────────────
-function go(name) {
-  ['camera','preview','edit'].forEach(s =>
-    document.getElementById('screen-' + s).classList.toggle('hidden', s !== name));
+// ─── Recording ───────────────────────────────────────────────────────────────
+function toggleRecord() {
+  if (S.isRecording) stopRecord();
+  else startRecord();
 }
 
-// ─── AI ───────────────────────────────────────────────────────────────────
-async function callAI(b64, mode, msg = '') {
-  if (!S.apiKey) { openSettings(); throw new Error('Нет ключа'); }
-  const r = await fetch('/api/analyze', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': S.apiKey },
-    body: JSON.stringify({ imageBase64: b64, mode, message: msg })
-  });
-  if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || r.statusText); }
-  return r.json();
+function startRecord() {
+  if (!S.stream) return;
+
+  S.recordedChunks = [];
+  const mimeType = getSupportedMime();
+  const options = mimeType ? { mimeType } : {};
+
+  try {
+    S.mediaRecorder = new MediaRecorder(S.stream, options);
+  } catch(e) {
+    S.mediaRecorder = new MediaRecorder(S.stream);
+  }
+
+  S.mediaRecorder.ondataavailable = e => {
+    if (e.data && e.data.size > 0) S.recordedChunks.push(e.data);
+  };
+
+  S.mediaRecorder.onstop = () => {
+    const mime = S.mediaRecorder.mimeType || 'video/mp4';
+    S.lastVideoBlob = new Blob(S.recordedChunks, { type: mime });
+    document.getElementById('dl-badge').classList.add('show');
+    showToast('✓ Видео готово');
+  };
+
+  S.mediaRecorder.start(1000); // collect chunks every 1s
+  S.isRecording = true;
+  S.recStartTime = Date.now();
+
+  document.getElementById('record-btn').classList.add('recording', 'pulsing');
+  document.getElementById('rec-badge').classList.add('show');
+  document.getElementById('dl-badge').classList.remove('show');
+
+  S.recTimer = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - S.recStartTime) / 1000);
+    const m = Math.floor(elapsed / 60);
+    const s = String(elapsed % 60).padStart(2, '0');
+    document.getElementById('rec-time').textContent = `${m}:${s}`;
+  }, 500);
 }
 
-function b64(dataUrl) { return dataUrl.replace(/^data:image\/\w+;base64,/, ''); }
+function stopRecord() {
+  if (!S.mediaRecorder || S.mediaRecorder.state === 'inactive') return;
+  S.mediaRecorder.stop();
+  S.isRecording = false;
 
-function frameB64() {
+  clearInterval(S.recTimer);
+  document.getElementById('record-btn').classList.remove('recording', 'pulsing');
+  document.getElementById('rec-badge').classList.remove('show');
+}
+
+function getSupportedMime() {
+  const types = ['video/mp4;codecs=h264', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'];
+  return types.find(t => MediaRecorder.isTypeSupported(t)) || '';
+}
+
+function downloadVideo() {
+  if (!S.lastVideoBlob) return;
+  const url = URL.createObjectURL(S.lastVideoBlob);
+  const ext = S.lastVideoBlob.type.includes('mp4') ? 'mp4' : 'webm';
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `ai-lens-${Date.now()}.${ext}`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+// ─── AI Analysis ─────────────────────────────────────────────────────────────
+function frameBase64() {
   const v = document.getElementById('video');
+  if (!v.videoWidth) return null;
   const c = document.createElement('canvas');
-  c.width = Math.min(v.videoWidth || 640, 800);
-  c.height = Math.round((v.videoHeight || 480) * (c.width / (v.videoWidth || 640)));
-  c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+  c.width = 320;
+  c.height = Math.round((v.videoHeight / v.videoWidth) * 320);
+  const ctx = c.getContext('2d');
+  if (S.facingMode === 'user') {
+    ctx.save(); ctx.translate(c.width, 0); ctx.scale(-1, 1);
+  }
+  ctx.drawImage(v, 0, 0, c.width, c.height);
+  if (S.facingMode === 'user') ctx.restore();
   return c.toDataURL('image/jpeg', 0.7).replace(/^data:image\/\w+;base64,/, '');
 }
 
-// ─── Tips ─────────────────────────────────────────────────────────────────
-const aiBtn = document.getElementById('ai-btn');
-const aiLabel = document.getElementById('ai-btn-label');
-const tipsCard = document.getElementById('tips-card');
+async function runAI() {
+  if (!S.apiKey) return;
 
-aiBtn.addEventListener('click', async () => {
-  if (aiBtn.classList.contains('loading')) return;
-  aiBtn.classList.add('loading'); aiLabel.textContent = 'Анализирую...';
+  const b64 = frameBase64();
+  if (!b64) return;
+
+  const dot = document.getElementById('ai-dot');
+  dot.classList.add('active');
+
   try {
-    const data = await callAI(frameB64(), 'tips');
-    showTips(data);
-  } catch(e) {
-    aiLabel.textContent = e.message;
-    setTimeout(() => { aiLabel.textContent = 'AI Советник'; }, 2500);
-  } finally {
-    aiBtn.classList.remove('loading'); aiLabel.textContent = 'AI Советник';
-  }
-});
-
-function showTips(d) {
-  const icons = ['📐','💡','🌅','🎯','✨'];
-  document.getElementById('tips-score').textContent = d.score ? d.score + '/10' : '—';
-  document.getElementById('tips-body').innerHTML = (d.tips || []).map((t,i) =>
-    `<div class="tip-row"><span class="tip-icon">${icons[i%icons.length]}</span><span>${t}</span></div>`
-  ).join('');
-  const moodEl = document.getElementById('tips-mood');
-  if (d.mood) { moodEl.textContent = '✦ ' + d.mood; moodEl.style.display = 'block'; }
-  tipsCard.classList.add('show');
-  setTimeout(() => tipsCard.classList.remove('show'), 8000);
-}
-
-// ─── Preview ──────────────────────────────────────────────────────────────
-function showPreview() {
-  document.getElementById('preview-img').src = S.dataUrl;
-  document.getElementById('score-overlay').style.display = 'none';
-  document.getElementById('ai-loading').style.display = 'flex';
-  document.getElementById('ai-result').style.display = 'none';
-  document.getElementById('btn-edit').disabled = true;
-  go('preview');
-
-  callAI(b64(S.dataUrl), 'full').then(data => {
-    S.analysis = data;
-    renderAnalysis(data);
-  }).catch(e => {
-    document.getElementById('ai-loading').innerHTML =
-      `<div style="color:var(--red);font-size:14px;text-align:center">⚠️ ${e.message}</div>`;
-  });
-}
-
-function renderAnalysis(d) {
-  document.getElementById('ai-loading').style.display = 'none';
-  document.getElementById('ai-result').style.display = 'block';
-  if (d.score) {
-    document.getElementById('score-num').textContent = d.score;
-    document.getElementById('score-overlay').style.display = 'block';
-  }
-  if (d.mood) {
-    document.getElementById('res-mood').textContent = d.mood;
-    document.getElementById('sec-mood').style.display = 'block';
-  }
-  document.getElementById('res-comp').textContent = d.composition || '—';
-  document.getElementById('res-strong').innerHTML = (d.strengths||[]).map(s =>
-    `<span class="chip chip-green">✓ ${s}</span>`).join('');
-  document.getElementById('res-improve').innerHTML = (d.improvements||[]).map(i =>
-    `<span class="chip chip-gold">→ ${i}</span>`).join('');
-  document.getElementById('btn-edit').disabled = false;
-}
-
-document.getElementById('preview-back').addEventListener('click', () => go('camera'));
-document.getElementById('btn-retake').addEventListener('click', () => go('camera'));
-document.getElementById('btn-edit').addEventListener('click', openEditor);
-
-// ─── Editor ───────────────────────────────────────────────────────────────
-const editCanvas = document.getElementById('edit-canvas');
-const ectx = editCanvas.getContext('2d');
-
-const FILTERS = [
-  { id:'natural', name:'Обычный', css:'' },
-  { id:'warm',    name:'Тёплый',  css:'sepia(0.2) saturate(1.4)' },
-  { id:'cool',    name:'Холодный',css:'hue-rotate(20deg) saturate(1.1)' },
-  { id:'vivid',   name:'Яркий',   css:'saturate(1.9) contrast(1.1)' },
-  { id:'bw',      name:'Ч/Б',     css:'grayscale(1)' },
-  { id:'fade',    name:'Фейд',    css:'brightness(1.1) saturate(0.65) contrast(0.88)' },
-  { id:'drama',   name:'Драма',   css:'contrast(1.45) saturate(1.25) brightness(0.88)' },
-  { id:'golden',  name:'Золотой', css:'sepia(0.4) saturate(1.6) brightness(1.05)' },
-];
-
-function openEditor() {
-  go('edit');
-  const img = new Image();
-  img.onload = () => {
-    const stage = editCanvas.parentElement;
-    const ratio = Math.min(stage.clientWidth / img.width, stage.clientHeight / img.height, 1);
-    editCanvas.width = img.width; editCanvas.height = img.height;
-    editCanvas.style.width = Math.round(img.width * ratio) + 'px';
-    editCanvas.style.height = Math.round(img.height * ratio) + 'px';
-    S.origImg = img;
-    S.adj = { br: 1, co: 1, sa: 1, wa: 0 };
-    S.filter = 'natural';
-    resetSliders();
-    draw();
-    buildThumbs(img);
-  };
-  img.src = S.dataUrl;
-  if (S.analysis?.colorCorrection) {
-    const cc = S.analysis.colorCorrection;
-    S.adj = { br: cc.brightness||1, co: cc.contrast||1, sa: cc.saturation||1, wa: cc.warmth||0 };
-  }
-}
-
-function resetSliders() {
-  document.getElementById('sl-br').value = Math.round(S.adj.br*100);
-  document.getElementById('sl-co').value = Math.round(S.adj.co*100);
-  document.getElementById('sl-sa').value = Math.round(S.adj.sa*100);
-  document.getElementById('sl-wa').value = S.adj.wa;
-  updateLabels();
-}
-
-function updateLabels() {
-  document.getElementById('v-br').textContent = document.getElementById('sl-br').value + '%';
-  document.getElementById('v-co').textContent = document.getElementById('sl-co').value + '%';
-  document.getElementById('v-sa').textContent = document.getElementById('sl-sa').value + '%';
-  document.getElementById('v-wa').textContent = document.getElementById('sl-wa').value;
-}
-
-['br','co','sa','wa'].forEach(k => {
-  document.getElementById('sl-' + k).addEventListener('input', () => {
-    S.adj.br = +document.getElementById('sl-br').value / 100;
-    S.adj.co = +document.getElementById('sl-co').value / 100;
-    S.adj.sa = +document.getElementById('sl-sa').value / 100;
-    S.adj.wa = +document.getElementById('sl-wa').value;
-    updateLabels(); draw();
-  });
-});
-
-function draw() {
-  if (!S.origImg) return;
-  const f = FILTERS.find(x => x.id === S.filter) || FILTERS[0];
-  const filter = [`brightness(${S.adj.br})`, `contrast(${S.adj.co})`, `saturate(${S.adj.sa})`, f.css].filter(Boolean).join(' ');
-  ectx.filter = filter;
-  ectx.drawImage(S.origImg, 0, 0);
-  ectx.filter = 'none';
-  if (S.adj.wa !== 0) {
-    ectx.globalCompositeOperation = 'multiply';
-    const a = Math.abs(S.adj.wa) / 180;
-    ectx.fillStyle = S.adj.wa > 0 ? `rgba(255,130,0,${a})` : `rgba(0,80,255,${a})`;
-    ectx.fillRect(0, 0, editCanvas.width, editCanvas.height);
-    ectx.globalCompositeOperation = 'source-over';
-  }
-}
-
-function buildThumbs(img) {
-  const row = document.getElementById('filters-row');
-  row.innerHTML = '';
-  FILTERS.forEach(f => {
-    const item = document.createElement('div');
-    item.className = 'filter-item' + (f.id === S.filter ? ' active' : '');
-    const ring = document.createElement('div'); ring.className = 'filter-ring';
-    const tc = document.createElement('canvas'); tc.width = 64; tc.height = 64;
-    const ctx = tc.getContext('2d');
-    const side = Math.min(img.width, img.height);
-    ctx.filter = f.css || 'none';
-    ctx.drawImage(img, (img.width-side)/2, (img.height-side)/2, side, side, 0, 0, 64, 64);
-    ring.appendChild(tc);
-    const name = document.createElement('div'); name.className = 'filter-name'; name.textContent = f.name;
-    item.appendChild(ring); item.appendChild(name);
-    item.addEventListener('click', () => {
-      S.filter = f.id;
-      document.querySelectorAll('.filter-item').forEach(el => el.classList.remove('active'));
-      item.classList.add('active');
-      draw();
+    const res = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': S.apiKey },
+      body: JSON.stringify({ imageBase64: b64, mode: 'profile' })
     });
-    row.appendChild(item);
-  });
-}
-
-// Save
-document.getElementById('save-btn').addEventListener('click', () => {
-  const a = document.createElement('a');
-  a.download = 'ai-lens-' + Date.now() + '.jpg';
-  a.href = editCanvas.toDataURL('image/jpeg', 0.95);
-  a.click();
-});
-
-// ─── AI Chat ──────────────────────────────────────────────────────────────
-const chatMsgs = document.getElementById('chat-msgs');
-const chatIn = document.getElementById('chat-in');
-
-function addBubble(role, text) {
-  const d = document.createElement('div');
-  d.className = 'bubble ' + role;
-  d.textContent = text;
-  chatMsgs.appendChild(d);
-  chatMsgs.scrollTop = chatMsgs.scrollHeight;
-  return d;
-}
-
-async function sendChat() {
-  const text = chatIn.value.trim(); if (!text) return;
-  chatIn.value = '';
-  addBubble('user', text);
-  const thinking = addBubble('ai thinking', '⏳ Думаю...');
-  try {
-    const data = await callAI(b64(S.dataUrl), 'edit', text);
-    thinking.textContent = data.response || 'Готово!';
-    thinking.classList.remove('thinking');
-    if (data.adjustments) {
-      const a = data.adjustments;
-      S.adj = { br: a.brightness||1, co: a.contrast||1, sa: a.saturation||1, wa: a.warmth||0 };
-      resetSliders(); draw();
-      addBubble('ai', '✅ Применил! Можешь дополнительно подкрутить слайдерами.');
-    }
-    if (data.removeBackground) {
-      addBubble('ai', '🔧 Удаление объектов — следующая фича. Скоро добавим!');
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.profile && PROFILES[data.profile]) {
+      applyProfile(data.profile, true);
+      S.lastAnalysis = { profile: data.profile, timestamp: Date.now() };
+      localStorage.setItem('ai_lens_last', JSON.stringify(S.lastAnalysis));
     }
   } catch(e) {
-    thinking.textContent = '⚠️ ' + e.message; thinking.classList.remove('thinking');
+    // silent
+  } finally {
+    dot.classList.remove('active');
   }
 }
 
-document.getElementById('send-btn').addEventListener('click', sendChat);
-chatIn.addEventListener('keydown', e => { if (e.key === 'Enter') sendChat(); });
+function startAICycle() {
+  clearInterval(S.aiInterval);
+  clearInterval(S.progressInterval);
 
-// ─── Voice ────────────────────────────────────────────────────────────────
-const micBtn = document.getElementById('mic-btn');
-let rec = null;
-if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  rec = new SR(); rec.lang = 'ru-RU'; rec.continuous = false;
-  rec.onresult = e => { chatIn.value = e.results[0][0].transcript; micBtn.classList.remove('on'); S.listening = false; sendChat(); };
-  rec.onend = () => { micBtn.classList.remove('on'); S.listening = false; };
-  micBtn.addEventListener('click', () => {
-    if (S.listening) { rec.stop(); return; }
-    S.listening = true; micBtn.classList.add('on'); rec.start();
-  });
-} else { micBtn.style.opacity = '0.3'; micBtn.title = 'Не поддерживается'; }
+  S.aiCycleStart = Date.now();
+  runAI();
 
-// ─── Tabs ─────────────────────────────────────────────────────────────────
-document.querySelectorAll('.tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    const id = tab.dataset.tab;
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-    tab.classList.add('active');
-    document.getElementById('panel-' + id).classList.add('active');
-  });
-});
+  S.progressInterval = setInterval(() => {
+    const elapsed = Date.now() - S.aiCycleStart;
+    const pct = Math.min((elapsed / S.AI_INTERVAL) * 100, 100);
+    document.getElementById('progress-fill').style.width = pct + '%';
+  }, 300);
 
-// ─── Grid ─────────────────────────────────────────────────────────────────
-document.getElementById('grid-btn').addEventListener('click', () => {
-  S.grid = !S.grid;
-  document.getElementById('grid').classList.toggle('on', S.grid);
-  document.getElementById('grid-btn').style.color = S.grid ? 'var(--gold)' : '#fff';
-});
-
-// ─── Edit back ────────────────────────────────────────────────────────────
-document.getElementById('edit-back').addEventListener('click', () => go('preview'));
-
-// ─── Settings ─────────────────────────────────────────────────────────────
-function openSettings() {
-  const ov = document.getElementById('settings-overlay');
-  document.getElementById('api-key').value = S.apiKey;
-  ov.classList.add('show');
+  S.aiInterval = setInterval(() => {
+    S.aiCycleStart = Date.now();
+    document.getElementById('progress-fill').style.width = '0%';
+    runAI();
+  }, S.AI_INTERVAL);
 }
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ─── Settings ─────────────────────────────────────────────────────────────────
+function openSettings() {
+  document.getElementById('api-key-field').value = S.apiKey;
+  updateLastAnalysisText();
+  document.getElementById('settings-overlay').classList.add('show');
+}
+
+function updateLastAnalysisText() {
+  const el = document.getElementById('last-analysis-text');
+  if (!S.lastAnalysis) { el.textContent = ''; return; }
+  const secs = Math.round((Date.now() - S.lastAnalysis.timestamp) / 1000);
+  const t = secs < 60 ? `${secs} сек назад` : `${Math.round(secs / 60)} мин назад`;
+  el.textContent = `Последний анализ: ${S.lastAnalysis.profile} • ${t}`;
+}
+
 document.getElementById('settings-btn').addEventListener('click', openSettings);
+
 document.getElementById('settings-overlay').addEventListener('click', e => {
-  if (e.target === document.getElementById('settings-overlay'))
+  if (e.target === document.getElementById('settings-overlay')) {
     document.getElementById('settings-overlay').classList.remove('show');
-});
-document.getElementById('save-settings').addEventListener('click', () => {
-  S.apiKey = document.getElementById('api-key').value.trim();
-  localStorage.setItem('apiKey', S.apiKey);
-  document.getElementById('settings-overlay').classList.remove('show');
+  }
 });
 
-// ─── Init ─────────────────────────────────────────────────────────────────
-startCamera();
-if (!S.apiKey) setTimeout(openSettings, 600);
+document.getElementById('save-settings-btn').addEventListener('click', () => {
+  S.apiKey = document.getElementById('api-key-field').value.trim();
+  localStorage.setItem('ai_lens_key', S.apiKey);
+  document.getElementById('settings-overlay').classList.remove('show');
+  if (S.apiKey) setTimeout(runAI, 300);
+});
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+navigator.mediaDevices?.getUserMedia({ video: true, audio: true })
+  .then(stream => {
+    // got permission immediately
+    stream.getTracks().forEach(t => t.stop());
+    startCamera();
+  })
+  .catch(() => {
+    // show permission screen
+  });
+
+if (!S.apiKey) setTimeout(openSettings, 700);
+
+// Restore last profile
+const savedProfile = localStorage.getItem('ai_lens_profile');
+if (savedProfile && PROFILES[savedProfile]) {
+  S.currentProfile = savedProfile;
+  document.getElementById('profile-icon').textContent = PROFILES[savedProfile].icon;
+  document.getElementById('profile-name').textContent = savedProfile;
+}
 </script>
 </body>
 </html>
