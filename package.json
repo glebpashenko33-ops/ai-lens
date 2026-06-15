@@ -1,13 +1,19 @@
 {
   "name": "ai-lens",
   "version": "1.0.0",
-  "main": "expo/AppEntry.js",
+  "main": "server.js",
   "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios"
+    "start": "node server.js",
+    "dev": "node server.js",
+    "expo": "expo start",
+    "android": "expo start --android"
+  },
+  "engines": {
+    "node": ">=18"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.27.0",
+    "express": "^4.19.2",
     "expo": "~51.0.0",
     "expo-camera": "~15.0.0",
     "expo-av": "~14.0.0",
