@@ -39,15 +39,14 @@
     .bottom-fade { position: absolute; bottom: 0; left: 0; right: 0; height: 260px; background: linear-gradient(to top,rgba(0,0,0,0.72) 0%,transparent 100%); pointer-events: none; z-index: 6; }
 
     /* ── Top bar ── */
-    #top-bar { position: absolute; top: 0; left: 0; right: 0; padding: calc(env(safe-area-inset-top,14px) + 10px) 16px 0; display: flex; align-items: center; justify-content: space-between; z-index: 10; }
-    .status-chips { display: flex; gap: 5px; flex-wrap: wrap; }
-    .chip { background: rgba(0,0,0,0.38); border: 1px solid rgba(255,255,255,0.14); border-radius: 6px; padding: 3px 7px; font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.75); letter-spacing: 0.3px; font-variant-numeric: tabular-nums; backdrop-filter: blur(8px); }
-    .top-title { font-size: 17px; font-style: italic; font-weight: 200; color: rgba(255,255,255,0.65); letter-spacing: 1.5px; position: absolute; left: 50%; transform: translateX(-50%); }
-    .top-btn { width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.7); font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(20px); transition: background 0.2s; }
+    #top-bar { position: absolute; top: 0; left: 0; right: 0; padding: calc(env(safe-area-inset-top,20px) + 52px) 14px 0; display: flex; align-items: center; justify-content: space-between; z-index: 10; }
+    .status-chips { display: flex; gap: 5px; flex-wrap: nowrap; align-items: center; }
+    .chip { background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.14); border-radius: 6px; padding: 4px 8px; font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.82); letter-spacing: 0.3px; font-variant-numeric: tabular-nums; backdrop-filter: blur(8px); }
+    .top-btn { width: 34px; height: 34px; border-radius: 50%; background: rgba(0,0,0,0.45); border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.7); font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(20px); transition: background 0.2s; }
     .top-btn:active { background: rgba(255,255,255,0.22); }
 
     /* ── AI strip ── */
-    #ai-strip { position: absolute; top: calc(env(safe-area-inset-top,14px) + 54px); left: 0; right: 0; padding: 2px 18px; display: flex; align-items: center; justify-content: space-between; z-index: 10; }
+    #ai-strip { position: absolute; top: calc(env(safe-area-inset-top,20px) + 108px); left: 0; right: 0; padding: 2px 18px; display: flex; align-items: center; justify-content: space-between; z-index: 10; }
     .ai-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.2); transition: background 0.4s, box-shadow 0.4s; flex-shrink: 0; }
     .ai-dot.on { background: #30d158; box-shadow: 0 0 7px #30d158; animation: blink 1.4s ease-in-out infinite; }
     .ai-strip-left { display: flex; align-items: center; gap: 7px; }
@@ -56,7 +55,7 @@
     #ai-lut-name { font-size: 10px; color: rgba(255,255,255,0.28); letter-spacing: 0.5px; }
 
     /* ── REC badge ── */
-    #rec-badge { position: absolute; top: calc(env(safe-area-inset-top,14px) + 10px); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; z-index: 11; }
+    #rec-badge { position: absolute; top: calc(env(safe-area-inset-top,20px) + 60px); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; z-index: 11; }
     .rec-dot { width: 7px; height: 7px; border-radius: 50%; background: #ff3b30; animation: blink 1s ease-in-out infinite; }
     .rec-tc { font-size: 13px; font-weight: 600; color: #fff; font-variant-numeric: tabular-nums; letter-spacing: 1px; }
 
@@ -219,7 +218,6 @@
       <div class="chip" id="chip-sh">180°</div>
       <div class="chip" id="chip-fps">24fps</div>
     </div>
-    <div class="top-title">AI Lens</div>
     <button class="top-btn" onclick="openSettings()">⚙</button>
   </div>
 
@@ -801,8 +799,8 @@ function drawPeaking(ctx, id, sw, sh, dw, dh) {
       const lumD = (data[id2]* 0.299 + data[id2+1]* 0.587 + data[id2+2]* 0.114);
       const edgeX = Math.abs(lum - lumR);
       const edgeY = Math.abs(lum - lumD);
-      if (edgeX > 28 || edgeY > 28) {
-        ctx.fillStyle = 'rgba(255,30,30,0.85)';
+      if (edgeX > 55 || edgeY > 55) {
+        ctx.fillStyle = 'rgba(255,40,40,0.7)';
         ctx.fillRect(Math.round(x * sx), Math.round(y * sy), 2, 2);
       }
     }
