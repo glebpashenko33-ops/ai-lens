@@ -1,979 +1,1021 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#0a0a0a">
+  <meta name="theme-color" content="#000000">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>AI Lens</title>
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    :root {
-      --gold: #FFD60A;
-      --gold2: #FF9F0A;
-      --bg: #0a0a0a;
-      --surface: #141414;
-      --surface2: #1e1e1e;
-      --surface3: #2a2a2a;
-      --border: rgba(255,255,255,0.08);
-      --text: #ffffff;
-      --text2: #888;
-      --text3: #555;
-      --green: #34C759;
-      --blue: #0A84FF;
-      --red: #FF453A;
-    }
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    html, body { height: 100%; overflow: hidden; background: #000; color: #fff; font-family: -apple-system, 'SF Pro Display', system-ui, sans-serif; user-select: none; -webkit-user-select: none; }
+    .hidden { display: none !important; }
+    .screen { position: fixed; inset: 0; }
 
-    html, body {
-      height: 100%; overflow: hidden; background: var(--bg);
-      color: var(--text);
-      font-family: 'Inter', -apple-system, system-ui, sans-serif;
-      user-select: none; -webkit-user-select: none;
-    }
+    /* ── Language screen ── */
+    #screen-lang { background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; gap: 28px; overflow-y: auto; }
+    .lang-title { font-size: 38px; font-style: italic; font-weight: 200; color: rgba(255,255,255,0.9); letter-spacing: 2px; }
+    .lang-subtitle { font-size: 13px; color: rgba(255,255,255,0.35); letter-spacing: 1.5px; text-transform: uppercase; }
+    .lang-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; width: 100%; max-width: 380px; }
+    .lang-card { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 14px 8px; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; transition: background 0.2s, border-color 0.2s; }
+    .lang-card:active { background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.3); }
+    .lang-flag { font-size: 26px; line-height: 1; }
+    .lang-name { font-size: 11px; color: rgba(255,255,255,0.65); text-align: center; font-weight: 400; line-height: 1.3; }
 
-    /* ─── Screens ─────────────────────────────────────────────── */
-    .screen {
-      position: fixed; inset: 0; display: flex; flex-direction: column;
-      background: var(--bg);
-      transition: opacity 0.3s cubic-bezier(.4,0,.2,1), transform 0.3s cubic-bezier(.4,0,.2,1);
-    }
-    .screen.hidden { opacity: 0; pointer-events: none; transform: translateY(12px); }
+    /* ── Camera screen ── */
+    #screen-camera { background: #000; }
+    #video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    #canvas-overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; }
+    #vignette { position: absolute; inset: 0; pointer-events: none; z-index: 4; }
+    #grain { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 4; opacity: 0; mix-blend-mode: overlay; }
 
-    /* ─── Camera Screen ────────────────────────────────────────── */
-    #video {
-      position: absolute; inset: 0; width: 100%; height: 100%;
-      object-fit: cover; background: #000;
-    }
-    #canvas-capture { display: none; }
-
-    /* Gradient overlays */
-    .cam-top-fade {
-      position: absolute; top: 0; left: 0; right: 0; height: 160px;
-      background: linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 100%);
-      z-index: 2; pointer-events: none;
-    }
-    .cam-bottom-fade {
-      position: absolute; bottom: 0; left: 0; right: 0; height: 220px;
-      background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%);
-      z-index: 2; pointer-events: none;
-    }
-
-    /* Top bar */
-    .cam-top {
-      position: absolute; top: 0; left: 0; right: 0;
-      padding: calc(env(safe-area-inset-top, 14px) + 10px) 20px 0;
-      display: flex; align-items: center; justify-content: space-between;
-      z-index: 10;
-    }
-    .cam-title {
-      font-size: 17px; font-weight: 600; letter-spacing: 0.5px;
-      display: flex; align-items: center; gap: 6px;
-    }
-    .cam-title-dot {
-      width: 7px; height: 7px; border-radius: 50%;
-      background: var(--gold); box-shadow: 0 0 8px var(--gold);
-    }
-
-    /* Glass button */
-    .glass-btn {
-      width: 40px; height: 40px; border-radius: 50%;
-      background: rgba(255,255,255,0.1);
-      border: 1px solid rgba(255,255,255,0.15);
-      color: #fff; font-size: 17px; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      backdrop-filter: blur(20px);
-      transition: background 0.2s, transform 0.15s;
-    }
-    .glass-btn:active { transform: scale(0.9); background: rgba(255,255,255,0.2); }
-
-    /* Bottom controls */
-    .cam-bottom {
-      position: absolute; bottom: 0; left: 0; right: 0;
-      padding: 0 28px calc(env(safe-area-inset-bottom, 24px) + 24px);
-      z-index: 10;
-      display: flex; flex-direction: column; gap: 20px;
-    }
-
-    /* AI Advisor button */
-    .ai-advisor-btn {
-      align-self: center;
-      display: flex; align-items: center; gap: 10px;
-      background: rgba(10,10,10,0.6);
-      border: 1px solid rgba(255,214,10,0.4);
-      border-radius: 30px; padding: 10px 22px;
-      font-size: 14px; font-weight: 500; color: var(--gold);
-      cursor: pointer; backdrop-filter: blur(20px);
-      transition: all 0.2s; letter-spacing: 0.3px;
-    }
-    .ai-advisor-btn:active { transform: scale(0.96); }
-    .ai-advisor-btn.loading {
-      border-color: rgba(10,132,255,0.5); color: var(--blue);
-    }
-    .ai-pulse {
-      width: 8px; height: 8px; border-radius: 50%; background: currentColor;
-      animation: aiPulse 1.8s ease-in-out infinite;
-      flex-shrink: 0;
-    }
-    @keyframes aiPulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.4; transform: scale(0.7); }
-    }
-
-    /* Camera action row */
-    .cam-actions {
-      display: flex; align-items: center; justify-content: space-between;
-    }
-    .thumb-preview {
-      width: 52px; height: 52px; border-radius: 12px;
-      background: var(--surface3); overflow: hidden;
-      border: 2px solid rgba(255,255,255,0.15);
-      cursor: pointer; transition: transform 0.15s, border-color 0.2s;
-      display: flex; align-items: center; justify-content: center;
-      color: var(--text3); font-size: 20px;
-    }
-    .thumb-preview:active { transform: scale(0.92); }
-    .thumb-preview img { width: 100%; height: 100%; object-fit: cover; display: none; }
-
-    /* Shutter button */
-    .shutter {
-      width: 78px; height: 78px; border-radius: 50%; cursor: pointer;
-      position: relative; transition: transform 0.1s;
-    }
-    .shutter:active { transform: scale(0.9); }
-    .shutter-ring {
-      position: absolute; inset: 0; border-radius: 50%;
-      border: 3px solid rgba(255,255,255,0.9);
-    }
-    .shutter-inner {
-      position: absolute; inset: 6px; border-radius: 50%;
-      background: #fff;
-      transition: transform 0.1s, background 0.1s;
-    }
-    .shutter:active .shutter-inner { transform: scale(0.88); background: #ddd; }
-
-    /* Switch camera */
-    .switch-cam {
-      width: 52px; height: 52px; border-radius: 50%;
-      background: rgba(255,255,255,0.1);
-      border: 1px solid rgba(255,255,255,0.12);
-      color: #fff; font-size: 22px; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      backdrop-filter: blur(20px); transition: transform 0.35s, background 0.2s;
-    }
-    .switch-cam:active { transform: rotate(180deg); background: rgba(255,255,255,0.2); }
-
-    /* Grid overlay */
-    .grid-overlay { position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: 0; transition: opacity 0.3s; }
-    .grid-overlay.on { opacity: 1; }
-    .g-line { position: absolute; background: rgba(255,255,255,0.25); }
+    #grid-overlay { position: absolute; inset: 0; z-index: 5; pointer-events: none; }
+    .g-line { position: absolute; background: rgba(255,255,255,0.22); }
     .g-h { left: 0; right: 0; height: 1px; }
     .g-v { top: 0; bottom: 0; width: 1px; }
 
-    /* Tips card */
-    .tips-card {
-      position: absolute; left: 16px; right: 16px;
-      bottom: calc(env(safe-area-inset-bottom, 24px) + 170px);
-      background: rgba(10,10,10,0.82);
-      border: 1px solid rgba(255,214,10,0.25);
-      border-radius: 18px; padding: 18px;
-      backdrop-filter: blur(24px);
-      transform: translateY(16px); opacity: 0;
-      transition: all 0.35s cubic-bezier(.4,0,.2,1);
-      pointer-events: none; z-index: 9;
-    }
-    .tips-card.show { transform: translateY(0); opacity: 1; pointer-events: auto; }
-    .tips-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
-    .tips-label { font-size: 11px; font-weight: 700; color: var(--gold); text-transform: uppercase; letter-spacing: 1.2px; }
-    .score-pill {
-      background: linear-gradient(135deg, var(--gold), var(--gold2));
-      color: #000; border-radius: 20px; padding: 3px 11px;
-      font-size: 12px; font-weight: 700;
-    }
-    .tip-row { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 10px; font-size: 14px; line-height: 1.45; }
-    .tip-row:last-child { margin-bottom: 0; }
-    .tip-icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
-    .tips-mood { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text2); font-style: italic; }
+    .top-fade { position: absolute; top: 0; left: 0; right: 0; height: 170px; background: linear-gradient(to bottom,rgba(0,0,0,0.65) 0%,transparent 100%); pointer-events: none; z-index: 6; }
+    .bottom-fade { position: absolute; bottom: 0; left: 0; right: 0; height: 260px; background: linear-gradient(to top,rgba(0,0,0,0.72) 0%,transparent 100%); pointer-events: none; z-index: 6; }
 
-    /* ─── Preview Screen ───────────────────────────────────────── */
-    .preview-nav {
-      display: flex; align-items: center;
-      padding: calc(env(safe-area-inset-top, 14px) + 10px) 20px 14px;
-      gap: 14px; background: var(--bg);
-      border-bottom: 1px solid var(--border);
-    }
-    .nav-back {
-      width: 36px; height: 36px; border-radius: 50%;
-      background: var(--surface2); border: none;
-      color: #fff; font-size: 18px; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      transition: background 0.15s;
-    }
-    .nav-back:active { background: var(--surface3); }
-    .nav-title { font-size: 16px; font-weight: 600; flex: 1; }
+    /* ── Top bar ── */
+    #top-bar { position: absolute; top: 0; left: 0; right: 0; padding: calc(env(safe-area-inset-top,14px) + 10px) 16px 0; display: flex; align-items: center; justify-content: space-between; z-index: 10; }
+    .status-chips { display: flex; gap: 5px; flex-wrap: wrap; }
+    .chip { background: rgba(0,0,0,0.38); border: 1px solid rgba(255,255,255,0.14); border-radius: 6px; padding: 3px 7px; font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.75); letter-spacing: 0.3px; font-variant-numeric: tabular-nums; backdrop-filter: blur(8px); }
+    .top-title { font-size: 17px; font-style: italic; font-weight: 200; color: rgba(255,255,255,0.65); letter-spacing: 1.5px; position: absolute; left: 50%; transform: translateX(-50%); }
+    .top-btn { width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.7); font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(20px); transition: background 0.2s; }
+    .top-btn:active { background: rgba(255,255,255,0.22); }
 
-    .photo-frame {
-      flex: 1; min-height: 0; position: relative;
-      background: #000; overflow: hidden;
-      display: flex; align-items: center; justify-content: center;
-    }
-    #preview-img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+    /* ── AI strip ── */
+    #ai-strip { position: absolute; top: calc(env(safe-area-inset-top,14px) + 54px); left: 0; right: 0; padding: 2px 18px; display: flex; align-items: center; justify-content: space-between; z-index: 10; }
+    .ai-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.2); transition: background 0.4s, box-shadow 0.4s; flex-shrink: 0; }
+    .ai-dot.on { background: #30d158; box-shadow: 0 0 7px #30d158; animation: blink 1.4s ease-in-out infinite; }
+    .ai-strip-left { display: flex; align-items: center; gap: 7px; }
+    .ai-strip-label { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.25); letter-spacing: 1.2px; transition: color 0.4s; }
+    .ai-strip-label.on { color: rgba(255,255,255,0.65); }
+    #ai-lut-name { font-size: 10px; color: rgba(255,255,255,0.28); letter-spacing: 0.5px; }
 
-    .score-overlay {
-      position: absolute; top: 14px; right: 14px;
-      background: rgba(0,0,0,0.7); backdrop-filter: blur(12px);
-      border: 1px solid rgba(255,214,10,0.3);
-      border-radius: 14px; padding: 10px 14px; text-align: center;
-      display: none;
-    }
-    .score-big { font-size: 30px; font-weight: 700; color: var(--gold); line-height: 1; }
-    .score-sub { font-size: 10px; color: var(--text2); margin-top: 2px; }
+    /* ── REC badge ── */
+    #rec-badge { position: absolute; top: calc(env(safe-area-inset-top,14px) + 10px); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; z-index: 11; }
+    .rec-dot { width: 7px; height: 7px; border-radius: 50%; background: #ff3b30; animation: blink 1s ease-in-out infinite; }
+    .rec-tc { font-size: 13px; font-weight: 600; color: #fff; font-variant-numeric: tabular-nums; letter-spacing: 1px; }
 
-    .analysis-sheet {
-      background: var(--surface);
-      border-top: 1px solid var(--border);
-      padding: 18px; overflow-y: auto; max-height: 42vh;
-    }
-    .loading-state { display: flex; flex-direction: column; align-items: center; padding: 28px; gap: 14px; }
-    .spinner {
-      width: 30px; height: 30px; border-radius: 50%;
-      border: 3px solid var(--surface3); border-top-color: var(--gold);
-      animation: spin 0.7s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .loading-text { font-size: 14px; color: var(--text2); }
+    /* ── Histogram ── */
+    #histogram-widget { position: absolute; left: 12px; bottom: calc(env(safe-area-inset-bottom,24px) + 210px); background: rgba(0,0,0,0.58); border-radius: 8px; overflow: hidden; z-index: 9; display: none; border: 1px solid rgba(255,255,255,0.08); }
+    #histogram-widget.show { display: block; }
 
-    .analysis-content { display: none; }
-    .section { margin-bottom: 18px; }
-    .section:last-child { margin-bottom: 0; }
-    .section-label { font-size: 11px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
-    .section-text { font-size: 14px; line-height: 1.55; color: var(--text); }
-    .chips { display: flex; flex-wrap: wrap; gap: 7px; }
-    .chip { border-radius: 20px; padding: 5px 12px; font-size: 13px; font-weight: 500; }
-    .chip-green { background: rgba(52,199,89,0.12); color: var(--green); border: 1px solid rgba(52,199,89,0.2); }
-    .chip-gold { background: rgba(255,214,10,0.1); color: var(--gold2); border: 1px solid rgba(255,214,10,0.2); }
+    /* ── Bottom area ── */
+    #bottom-area { position: absolute; bottom: 0; left: 0; right: 0; z-index: 10; padding-bottom: calc(env(safe-area-inset-bottom,24px) + 10px); }
+    #ai-progress-track { height: 1.5px; background: rgba(255,255,255,0.1); }
+    #ai-progress-fill { height: 100%; background: rgba(255,255,255,0.38); transition: width 0.3s linear; width: 0%; }
 
-    .preview-actions {
-      display: flex; gap: 10px;
-      padding: 14px 16px calc(env(safe-area-inset-bottom, 16px) + 14px);
-      background: var(--surface); border-top: 1px solid var(--border);
-    }
-    .btn { flex: 1; height: 48px; border-radius: 14px; border: none; font-size: 15px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 7px; transition: all 0.15s; font-family: inherit; }
-    .btn:active { transform: scale(0.96); }
-    .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
-    .btn-gold { background: linear-gradient(135deg, var(--gold) 0%, var(--gold2) 100%); color: #000; }
-    .btn-gold:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+    #controls-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 28px 0; }
+    .overlay-toggles { display: flex; flex-direction: column; gap: 5px; }
+    .toggle-row { display: flex; gap: 5px; }
+    .ov-btn { width: 30px; height: 30px; border-radius: 8px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.45); font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.18s; }
+    .ov-btn.active { background: rgba(255,255,255,0.85); color: #000; border-color: transparent; }
 
-    /* ─── Edit Screen ──────────────────────────────────────────── */
-    .edit-nav {
-      display: flex; align-items: center;
-      padding: calc(env(safe-area-inset-top, 14px) + 10px) 20px 14px;
-      gap: 14px; background: var(--bg);
-      border-bottom: 1px solid var(--border);
-    }
-    .save-action {
-      font-size: 14px; font-weight: 600;
-      color: var(--gold); cursor: pointer; padding: 6px;
-      transition: opacity 0.15s;
-    }
-    .save-action:active { opacity: 0.6; }
+    .rec-btn { width: 58px; height: 58px; border-radius: 50%; position: relative; cursor: pointer; flex-shrink: 0; }
+    .rec-ring { position: absolute; inset: 0; border-radius: 50%; border: 2.5px solid rgba(255,255,255,0.85); }
+    .rec-inner { position: absolute; inset: 6px; border-radius: 50%; background: #ff3b30; transition: border-radius 0.22s cubic-bezier(.4,0,.2,1), inset 0.22s cubic-bezier(.4,0,.2,1); }
+    .rec-btn.recording .rec-inner { inset: 16px; border-radius: 4px; }
+    .rec-btn.recording { animation: pulse-rec 1.1s ease-in-out infinite; }
 
-    .canvas-stage {
-      flex: 1; min-height: 0; background: #000;
-      display: flex; align-items: center; justify-content: center;
-      overflow: hidden; position: relative;
-    }
-    #edit-canvas { max-width: 100%; max-height: 100%; display: block; }
+    .flip-btn { width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(20px); transition: transform 0.38s cubic-bezier(.4,0,.2,1), background 0.2s; }
+    .flip-btn:active { background: rgba(255,255,255,0.22); }
+    .flip-btn.spinning { transform: rotate(180deg); }
 
-    /* Tab bar */
-    .tab-bar {
-      display: flex; background: var(--surface);
-      border-top: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
-    }
-    .tab {
-      flex: 1; padding: 13px 4px; background: none; border: none;
-      color: var(--text3); font-size: 12px; font-weight: 600;
-      cursor: pointer; transition: color 0.2s;
-      border-bottom: 2px solid transparent; font-family: inherit;
-      letter-spacing: 0.3px;
-    }
-    .tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+    #mode-row { display: flex; align-items: center; gap: 10px; padding: 10px 28px 0; }
+    .mode-btn { flex: 1; height: 36px; border-radius: 10px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.6); font-size: 11px; font-weight: 700; letter-spacing: 0.8px; cursor: pointer; backdrop-filter: blur(20px); transition: all 0.2s; font-family: inherit; }
+    .mode-btn:active { opacity: 0.75; }
+    #ai-mode-btn { color: rgba(255,255,255,0.35); }
+    #ai-mode-btn.active { background: rgba(48,209,88,0.14); border-color: rgba(48,209,88,0.4); color: #30d158; box-shadow: 0 0 14px rgba(48,209,88,0.12); }
 
-    .panel { display: none; background: var(--surface); }
-    .panel.active { display: block; }
+    /* ── Toast ── */
+    #toast { position: absolute; bottom: calc(env(safe-area-inset-bottom,24px) + 140px); left: 50%; transform: translateX(-50%) translateY(10px); background: rgba(0,0,0,0.72); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.1); border-radius: 22px; padding: 9px 20px; font-size: 13px; color: rgba(255,255,255,0.9); opacity: 0; transition: opacity 0.25s, transform 0.25s; pointer-events: none; white-space: nowrap; z-index: 20; }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-    /* Filters */
-    .filters-row {
-      display: flex; gap: 12px; padding: 14px 16px;
-      overflow-x: auto; scrollbar-width: none;
-    }
-    .filters-row::-webkit-scrollbar { display: none; }
-    .filter-item { display: flex; flex-direction: column; align-items: center; gap: 7px; cursor: pointer; flex-shrink: 0; }
-    .filter-ring {
-      width: 64px; height: 64px; border-radius: 16px; overflow: hidden;
-      border: 2px solid transparent; transition: border-color 0.2s, box-shadow 0.2s;
-    }
-    .filter-item.active .filter-ring { border-color: var(--gold); box-shadow: 0 0 14px rgba(255,214,10,0.3); }
-    .filter-ring canvas { width: 100%; height: 100%; display: block; }
-    .filter-name { font-size: 11px; color: var(--text3); transition: color 0.2s; font-weight: 500; }
-    .filter-item.active .filter-name { color: var(--gold); }
+    /* ── Overlay panels ── */
+    .overlay-panel { position: fixed; inset: 0; background: rgba(0,0,0,0.55); backdrop-filter: blur(12px); z-index: 50; display: flex; align-items: flex-end; opacity: 0; transition: opacity 0.28s; pointer-events: none; }
+    .overlay-panel.show { opacity: 1; pointer-events: auto; }
+    .sheet { width: 100%; background: #141414; border-radius: 22px 22px 0 0; border-top: 1px solid rgba(255,255,255,0.07); transform: translateY(100%); transition: transform 0.32s cubic-bezier(.4,0,.2,1); max-height: 82vh; display: flex; flex-direction: column; }
+    .overlay-panel.show .sheet { transform: translateY(0); }
+    .sheet-handle { width: 34px; height: 3px; border-radius: 2px; background: rgba(255,255,255,0.15); margin: 14px auto 0; flex-shrink: 0; }
+    .sheet-header { padding: 14px 20px 0; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; }
+    .sheet-title { font-size: 20px; font-weight: 200; font-style: italic; color: #fff; }
+    .sheet-close { width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,0.1); border: none; color: rgba(255,255,255,0.5); font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+    /* Manual panel tabs */
+    .panel-tabs { display: flex; gap: 0; padding: 12px 16px 0; overflow-x: auto; scrollbar-width: none; flex-shrink: 0; }
+    .panel-tabs::-webkit-scrollbar { display: none; }
+    .ptab { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.38); cursor: pointer; white-space: nowrap; border: none; background: none; font-family: inherit; transition: all 0.18s; }
+    .ptab.active { background: rgba(255,255,255,0.9); color: #000; }
+
+    .panel-body { flex: 1; overflow-y: auto; padding: 14px 20px 0; scrollbar-width: none; }
+    .panel-body::-webkit-scrollbar { display: none; }
+
+    /* AI banner inside manual panel */
+    .ai-banner { background: rgba(48,209,88,0.07); border: 1px solid rgba(48,209,88,0.2); border-radius: 12px; padding: 11px 14px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .ai-banner-text { font-size: 12px; color: rgba(255,255,255,0.55); }
+    .ai-banner-btn { padding: 7px 13px; border-radius: 8px; background: #30d158; border: none; color: #000; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; flex-shrink: 0; }
 
     /* Sliders */
-    .sliders { padding: 14px 18px; display: flex; flex-direction: column; gap: 16px; }
-    .sl-row { display: flex; flex-direction: column; gap: 8px; }
-    .sl-head { display: flex; justify-content: space-between; align-items: center; }
-    .sl-name { font-size: 13px; color: var(--text2); font-weight: 500; }
-    .sl-val { font-size: 13px; color: var(--text); font-weight: 600; min-width: 38px; text-align: right; }
-    input[type=range] {
-      width: 100%; height: 3px; border-radius: 2px; background: var(--surface3);
-      outline: none; -webkit-appearance: none; appearance: none; cursor: pointer;
-    }
-    input[type=range]::-webkit-slider-thumb {
-      -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%;
-      background: linear-gradient(135deg, var(--gold), var(--gold2));
-      cursor: pointer; box-shadow: 0 2px 10px rgba(255,159,10,0.4);
-    }
+    .sl-group { margin-bottom: 18px; }
+    .sl-group-title { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.28); text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 10px; }
+    .sl-row { margin-bottom: 12px; }
+    .sl-head { display: flex; justify-content: space-between; margin-bottom: 5px; }
+    .sl-name { font-size: 12px; color: rgba(255,255,255,0.55); }
+    .sl-val { font-size: 12px; font-weight: 600; color: #fff; font-variant-numeric: tabular-nums; min-width: 48px; text-align: right; }
+    input[type=range] { width: 100%; height: 3px; border-radius: 2px; background: rgba(255,255,255,0.14); outline: none; -webkit-appearance: none; appearance: none; cursor: pointer; }
+    input[type=range]:disabled { opacity: 0.35; cursor: not-allowed; }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #fff; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.5); }
 
-    /* AI Chat */
-    .chat-area { display: flex; flex-direction: column; height: 222px; }
-    .chat-msgs {
-      flex: 1; overflow-y: auto; padding: 12px 14px;
-      display: flex; flex-direction: column; gap: 9px;
-      scrollbar-width: none;
-    }
-    .chat-msgs::-webkit-scrollbar { display: none; }
-    .bubble {
-      max-width: 82%; padding: 10px 14px; border-radius: 18px;
-      font-size: 14px; line-height: 1.45;
-    }
-    .bubble.user { background: var(--blue); color: #fff; align-self: flex-end; border-bottom-right-radius: 5px; }
-    .bubble.ai { background: var(--surface2); color: var(--text); align-self: flex-start; border-bottom-left-radius: 5px; }
-    .bubble.thinking { color: var(--text3); font-style: italic; }
+    /* FPS & LUT chips */
+    .chip-row { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 4px; }
+    .sel-chip { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.45); background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1); cursor: pointer; transition: all 0.18s; }
+    .sel-chip.active { background: rgba(255,255,255,0.88); color: #000; border-color: transparent; }
+    .sel-chip:disabled { opacity: 0.3; cursor: not-allowed; }
 
-    .chat-row {
-      display: flex; align-items: center; gap: 9px;
-      padding: 10px 12px calc(env(safe-area-inset-bottom, 10px) + 10px);
-      border-top: 1px solid var(--border);
-    }
-    .chat-field {
-      flex: 1; background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 22px; padding: 10px 16px;
-      font-size: 14px; color: var(--text); outline: none; font-family: inherit;
-      transition: border-color 0.2s;
-    }
-    .chat-field:focus { border-color: rgba(10,132,255,0.4); }
-    .chat-field::placeholder { color: var(--text3); }
-    .mic-btn {
-      width: 40px; height: 40px; border-radius: 50%;
-      background: var(--surface2); border: 1px solid var(--border);
-      color: var(--text2); font-size: 17px; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0; transition: all 0.2s;
-    }
-    .mic-btn.on { background: var(--red); color: #fff; border-color: var(--red); animation: aiPulse 1s infinite; }
-    .send-btn {
-      width: 40px; height: 40px; border-radius: 50%;
-      background: var(--blue); border: none; color: #fff;
-      font-size: 16px; cursor: pointer; flex-shrink: 0;
-      display: flex; align-items: center; justify-content: center;
-      transition: transform 0.15s;
-    }
-    .send-btn:active { transform: scale(0.9); }
+    /* Panel footer */
+    .panel-footer { padding: 12px 20px calc(env(safe-area-inset-bottom,20px) + 12px); display: flex; gap: 10px; flex-shrink: 0; border-top: 1px solid rgba(255,255,255,0.06); }
+    .footer-btn { flex: 1; height: 44px; border-radius: 12px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: opacity 0.15s; }
+    .footer-btn:active { opacity: 0.72; }
+    .btn-ghost { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.65); border: 1px solid rgba(255,255,255,0.1); }
+    .btn-ai { background: #30d158; color: #000; }
 
-    /* ─── Settings Modal ───────────────────────────────────────── */
-    .overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.65);
-      backdrop-filter: blur(8px); z-index: 100;
-      display: flex; align-items: flex-end;
-      opacity: 0; transition: opacity 0.3s; pointer-events: none;
-    }
-    .overlay.show { opacity: 1; pointer-events: auto; }
-    .sheet {
-      width: 100%; background: var(--surface);
-      border-radius: 24px 24px 0 0;
-      border-top: 1px solid var(--border);
-      padding: 24px 22px calc(env(safe-area-inset-bottom, 20px) + 22px);
-      transform: translateY(100%); transition: transform 0.35s cubic-bezier(.4,0,.2,1);
-    }
-    .overlay.show .sheet { transform: translateY(0); }
-    .sheet-handle { width: 36px; height: 4px; border-radius: 2px; background: var(--surface3); margin: 0 auto 22px; }
-    .sheet-title { font-size: 18px; font-weight: 700; margin-bottom: 22px; }
-    .field-label { font-size: 12px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
-    .field {
-      width: 100%; background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 12px; padding: 13px 15px;
-      font-size: 15px; color: var(--text); outline: none; font-family: inherit;
-      margin-bottom: 18px; transition: border-color 0.2s;
-    }
-    .field:focus { border-color: rgba(255,214,10,0.4); }
-    .hint { font-size: 12px; color: var(--text3); line-height: 1.5; margin-bottom: 20px; }
-    .hint a { color: var(--blue); text-decoration: none; }
+    /* Settings panel */
+    .settings-body { padding: 18px 20px; flex: 1; overflow-y: auto; }
+    .field-lbl { font-size: 11px; color: rgba(255,255,255,0.32); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+    .field { width: 100%; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 13px 15px; font-size: 15px; color: #fff; outline: none; font-family: inherit; margin-bottom: 8px; transition: border-color 0.2s; }
+    .field:focus { border-color: rgba(255,255,255,0.28); }
+    .field::placeholder { color: rgba(255,255,255,0.2); }
+    .field-hint { font-size: 11px; color: rgba(255,255,255,0.22); margin-bottom: 22px; line-height: 1.5; }
+    .save-btn { width: 100%; padding: 14px; background: #fff; border: none; border-radius: 13px; font-size: 15px; font-weight: 600; color: #000; cursor: pointer; font-family: inherit; }
+    .save-btn:active { opacity: 0.8; }
+
+    /* Perm screen */
+    #screen-perm { background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; }
+    #screen-perm p { color: rgba(255,255,255,0.72); font-size: 17px; font-weight: 300; text-align: center; padding: 0 32px; }
+    #screen-perm button { background: #fff; border: none; border-radius: 14px; padding: 13px 36px; font-size: 16px; font-weight: 600; color: #000; cursor: pointer; font-family: inherit; }
+
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.25} }
+    @keyframes pulse-rec { 0%,100%{transform:scale(1)} 50%{transform:scale(1.07)} }
   </style>
 </head>
 <body>
 
-<!-- ══════════════════════════════════════════════
-     CAMERA SCREEN
-══════════════════════════════════════════════ -->
-<div id="screen-camera" class="screen">
+<!-- SVG color grading filter — Blackmagic-style Lift/Gamma/Gain per channel -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="bmd-grade" color-interpolation-filters="sRGB">
+    <feComponentTransfer>
+      <feFuncR id="fnR" type="gamma" amplitude="1" exponent="1" offset="0"/>
+      <feFuncG id="fnG" type="gamma" amplitude="1" exponent="1" offset="0"/>
+      <feFuncB id="fnB" type="gamma" amplitude="1" exponent="1" offset="0"/>
+    </feComponentTransfer>
+  </filter>
+</svg>
+
+<!-- SCREEN: Language picker -->
+<div id="screen-lang" class="screen">
+  <div class="lang-title">AI Lens</div>
+  <div class="lang-subtitle" id="lang-prompt">Choose your language</div>
+  <div class="lang-grid" id="lang-grid"></div>
+</div>
+
+<!-- SCREEN: Permission -->
+<div id="screen-perm" class="screen hidden">
+  <p id="perm-text">Camera access required</p>
+  <button onclick="initCamera()">Allow</button>
+</div>
+
+<!-- SCREEN: Camera -->
+<div id="screen-camera" class="screen hidden">
   <video id="video" autoplay playsinline muted></video>
-  <canvas id="canvas-capture"></canvas>
+  <canvas id="canvas-overlay"></canvas>
+  <div id="vignette"></div>
+  <canvas id="grain"></canvas>
 
-  <div class="cam-top-fade"></div>
-  <div class="cam-bottom-fade"></div>
-
-  <!-- Grid -->
-  <div class="grid-overlay" id="grid">
+  <!-- Grid overlay -->
+  <div id="grid-overlay" class="hidden">
     <div class="g-line g-h" style="top:33.33%"></div>
     <div class="g-line g-h" style="top:66.66%"></div>
     <div class="g-line g-v" style="left:33.33%"></div>
     <div class="g-line g-v" style="left:66.66%"></div>
   </div>
 
-  <!-- Top -->
-  <div class="cam-top">
-    <button class="glass-btn" id="flash-btn">⚡</button>
-    <div class="cam-title">
-      <div class="cam-title-dot"></div>
-      AI Lens
-    </div>
-    <button class="glass-btn" id="settings-btn">⚙️</button>
+  <div class="top-fade"></div>
+  <div class="bottom-fade"></div>
+
+  <!-- Histogram widget -->
+  <div id="histogram-widget">
+    <canvas id="histogram-canvas" width="120" height="54"></canvas>
   </div>
 
-  <!-- Tips card -->
-  <div class="tips-card" id="tips-card">
-    <div class="tips-top">
-      <span class="tips-label">✦ AI Советник</span>
-      <span class="score-pill" id="tips-score">—</span>
+  <!-- Top bar -->
+  <div id="top-bar">
+    <div class="status-chips">
+      <div class="chip" id="chip-wb">5600K</div>
+      <div class="chip" id="chip-iso">ISO 800</div>
+      <div class="chip" id="chip-sh">180°</div>
+      <div class="chip" id="chip-fps">24fps</div>
     </div>
-    <div id="tips-body"></div>
-    <div class="tips-mood" id="tips-mood" style="display:none"></div>
+    <div class="top-title">AI Lens</div>
+    <button class="top-btn" onclick="openSettings()">⚙</button>
   </div>
 
-  <!-- Bottom -->
-  <div class="cam-bottom">
-    <button class="ai-advisor-btn" id="ai-btn">
-      <div class="ai-pulse"></div>
-      <span id="ai-btn-label">AI Советник</span>
-    </button>
+  <!-- AI status strip -->
+  <div id="ai-strip">
+    <div class="ai-strip-left">
+      <div class="ai-dot" id="ai-dot"></div>
+      <div class="ai-strip-label" id="ai-strip-label">AI</div>
+    </div>
+    <div id="ai-lut-name">Natural</div>
+  </div>
 
-    <div class="cam-actions">
-      <div class="thumb-preview" id="thumb" onclick="onThumbClick()">
-        <img id="thumb-img" src="" alt="">
-        <span id="thumb-icon">🖼</span>
+  <!-- REC badge -->
+  <div id="rec-badge" class="hidden">
+    <div class="rec-dot"></div>
+    <div class="rec-tc" id="rec-tc">00:00:00:00</div>
+  </div>
+
+  <!-- Bottom area -->
+  <div id="bottom-area">
+    <div id="ai-progress-track"><div id="ai-progress-fill"></div></div>
+
+    <div id="controls-row">
+      <!-- Overlay toggles -->
+      <div class="overlay-toggles">
+        <div class="toggle-row">
+          <button class="ov-btn" id="btn-grid" onclick="toggleOverlay('grid')" title="Grid">⊞</button>
+          <button class="ov-btn" id="btn-zebra" onclick="toggleOverlay('zebra')" title="Zebra">◨</button>
+        </div>
+        <div class="toggle-row">
+          <button class="ov-btn" id="btn-peaking" onclick="toggleOverlay('peaking')" title="Peaking">◈</button>
+          <button class="ov-btn" id="btn-histogram" onclick="toggleOverlay('histogram')" title="Histogram">▦</button>
+        </div>
       </div>
 
-      <div class="shutter" id="shutter-btn">
-        <div class="shutter-ring"></div>
-        <div class="shutter-inner"></div>
+      <!-- Record button -->
+      <div class="rec-btn" id="rec-btn" onclick="toggleRecord()">
+        <div class="rec-ring"></div>
+        <div class="rec-inner"></div>
       </div>
 
-      <button class="switch-cam" id="switch-btn">⟳</button>
+      <!-- Flip camera -->
+      <button class="flip-btn" id="flip-btn" onclick="flipCamera()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M1 4v6h6"/><path d="M23 20v-6h-6"/>
+          <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15"/>
+        </svg>
+      </button>
+    </div>
+
+    <div id="mode-row">
+      <button class="mode-btn" id="manual-btn" onclick="openManual()" data-t="manual">MANUAL</button>
+      <button class="mode-btn" id="ai-mode-btn" onclick="toggleAIMode()" data-t="aiAuto">AI AUTO</button>
     </div>
   </div>
 
-  <!-- Grid toggle -->
-  <button class="glass-btn" id="grid-btn"
-    style="position:absolute;left:18px;bottom:calc(env(safe-area-inset-bottom,24px)+130px);z-index:10;font-size:15px">
-    ⊞
-  </button>
+  <div id="toast"></div>
 </div>
 
-<!-- ══════════════════════════════════════════════
-     PREVIEW SCREEN
-══════════════════════════════════════════════ -->
-<div id="screen-preview" class="screen hidden">
-  <div class="preview-nav">
-    <button class="nav-back" id="preview-back">←</button>
-    <div class="nav-title">Анализ фото</div>
-  </div>
-
-  <div class="photo-frame">
-    <img id="preview-img" src="" alt="">
-    <div class="score-overlay" id="score-overlay">
-      <div class="score-big" id="score-num">—</div>
-      <div class="score-sub">из 10</div>
-    </div>
-  </div>
-
-  <div class="analysis-sheet">
-    <div class="loading-state" id="ai-loading">
-      <div class="spinner"></div>
-      <div class="loading-text">AI анализирует фото...</div>
-    </div>
-    <div class="analysis-content" id="ai-result">
-      <div class="section" id="sec-mood" style="display:none">
-        <div class="section-label">Настроение</div>
-        <div class="section-text" id="res-mood"></div>
-      </div>
-      <div class="section">
-        <div class="section-label">Композиция</div>
-        <div class="section-text" id="res-comp"></div>
-      </div>
-      <div class="section">
-        <div class="section-label">Сильные стороны</div>
-        <div class="chips" id="res-strong"></div>
-      </div>
-      <div class="section">
-        <div class="section-label">Что улучшить</div>
-        <div class="chips" id="res-improve"></div>
-      </div>
-    </div>
-  </div>
-
-  <div class="preview-actions">
-    <button class="btn btn-ghost" id="btn-retake">↩ Переснять</button>
-    <button class="btn btn-gold" id="btn-edit" disabled>✏️ Редактировать</button>
-  </div>
-</div>
-
-<!-- ══════════════════════════════════════════════
-     EDIT SCREEN
-══════════════════════════════════════════════ -->
-<div id="screen-edit" class="screen hidden">
-  <div class="edit-nav">
-    <button class="nav-back" id="edit-back">←</button>
-    <div class="nav-title" style="flex:1">Редактор</div>
-    <div class="save-action" id="save-btn">Сохранить</div>
-  </div>
-
-  <div class="canvas-stage">
-    <canvas id="edit-canvas"></canvas>
-  </div>
-
-  <div class="tab-bar">
-    <button class="tab active" data-tab="filters">🎨 Фильтры</button>
-    <button class="tab" data-tab="adjust">🎛 Настройки</button>
-    <button class="tab" data-tab="ai">🤖 AI Чат</button>
-  </div>
-
-  <div class="panel active" id="panel-filters">
-    <div class="filters-row" id="filters-row"></div>
-  </div>
-  <div class="panel" id="panel-adjust">
-    <div class="sliders">
-      <div class="sl-row">
-        <div class="sl-head"><span class="sl-name">☀️ Яркость</span><span class="sl-val" id="v-br">100%</span></div>
-        <input type="range" id="sl-br" min="50" max="200" value="100">
-      </div>
-      <div class="sl-row">
-        <div class="sl-head"><span class="sl-name">◑ Контраст</span><span class="sl-val" id="v-co">100%</span></div>
-        <input type="range" id="sl-co" min="50" max="200" value="100">
-      </div>
-      <div class="sl-row">
-        <div class="sl-head"><span class="sl-name">🌈 Насыщенность</span><span class="sl-val" id="v-sa">100%</span></div>
-        <input type="range" id="sl-sa" min="0" max="300" value="100">
-      </div>
-      <div class="sl-row">
-        <div class="sl-head"><span class="sl-name">🌡 Теплота</span><span class="sl-val" id="v-wa">0</span></div>
-        <input type="range" id="sl-wa" min="-60" max="60" value="0">
-      </div>
-    </div>
-  </div>
-  <div class="panel" id="panel-ai">
-    <div class="chat-area">
-      <div class="chat-msgs" id="chat-msgs">
-        <div class="bubble ai">Привет! Опиши что хочешь изменить — например «убери людей сзади» или «сделай теплее».</div>
-      </div>
-      <div class="chat-row">
-        <button class="mic-btn" id="mic-btn">🎤</button>
-        <input class="chat-field" id="chat-in" type="text" placeholder="Напиши запрос...">
-        <button class="send-btn" id="send-btn">➤</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ══════════════════════════════════════════════
-     SETTINGS SHEET
-══════════════════════════════════════════════ -->
-<div class="overlay" id="settings-overlay">
+<!-- PANEL: Manual controls -->
+<div class="overlay-panel hidden" id="panel-manual">
   <div class="sheet">
     <div class="sheet-handle"></div>
-    <div class="sheet-title">Настройки</div>
-    <div class="field-label">Claude API Ключ</div>
-    <input type="password" class="field" id="api-key" placeholder="sk-ant-api03-...">
-    <div class="hint">
-      Получить ключ: <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a><br>
-      Ключ сохраняется в браузере и не передаётся никому кроме Anthropic.
+    <div class="sheet-header">
+      <div class="sheet-title" data-t="manual">Manual</div>
+      <button class="sheet-close" onclick="closeManual()">✕</button>
     </div>
-    <button class="btn btn-gold" id="save-settings">Сохранить</button>
+    <div class="panel-tabs" id="panel-tabs"></div>
+    <div class="panel-body" id="panel-body"></div>
+    <div class="panel-footer">
+      <button class="footer-btn btn-ghost" onclick="resetParams()" data-t="reset">Reset</button>
+      <button class="footer-btn btn-ai" onclick="enableAI()" data-t="letAI">Let AI take over</button>
+    </div>
+  </div>
+</div>
+
+<!-- PANEL: Settings -->
+<div class="overlay-panel hidden" id="panel-settings">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div class="sheet-title" data-t="settings">Settings</div>
+      <button class="sheet-close" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="settings-body">
+      <div class="field-lbl" data-t="apiKey">Anthropic API Key</div>
+      <input type="password" class="field" id="api-field" placeholder="sk-ant-...">
+      <div class="field-hint" data-t="apiHint">Get key: console.anthropic.com — stored only in your browser.</div>
+      <button class="save-btn" onclick="saveSettings()" data-t="save">Save</button>
+    </div>
   </div>
 </div>
 
 <script>
-// ─── State ────────────────────────────────────────────────────────────────
-const S = {
-  apiKey: localStorage.getItem('apiKey') || '',
-  facingMode: 'environment',
-  stream: null,
-  dataUrl: null,
-  analysis: null,
-  filter: 'natural',
-  adj: { br: 1, co: 1, sa: 1, wa: 0 },
-  origImg: null,
-  listening: false,
-  grid: false
+// ─── Translations ─────────────────────────────────────────────────────────────
+const T = {
+  en: { chooseLanguage:'Choose your language', aiAuto:'AI AUTO', aiOff:'AI OFF', aiControlling:'AI is controlling', takeManual:'Take manual control', letAI:'Let AI take over', manual:'MANUAL', settings:'Settings', save:'Save', reset:'Reset', exposure:'Exposure', whiteBalance:'White Balance', color:'Color', grade:'Grade', lut:'LUT', iso:'ISO', shutter:'Shutter', frameRate:'Frame Rate', temperature:'Temperature', tint:'Tint', saturation:'Saturation', contrast:'Contrast', pivot:'Pivot', lift:'Lift', gamma:'Gamma', gain:'Gain', natural:'Natural', film:'Film', cinematic:'Cinematic', portrait:'Portrait', night:'Night', golden:'Golden', videoSaved:'✓ Video saved', camUnavailable:'Camera unavailable', apiKey:'Anthropic API Key', apiHint:'Get key: console.anthropic.com', vignette:'Vignette', filmGrain:'Film Grain', hue:'Hue', red:'R', green:'G', blue:'B' },
+  ru: { chooseLanguage:'Выберите язык', aiAuto:'ИИ АВТО', aiOff:'ИИ ВЫКЛ', aiControlling:'ИИ управляет', takeManual:'Взять управление', letAI:'Доверить ИИ', manual:'РУЧНОЙ', settings:'Настройки', save:'Сохранить', reset:'Сбросить', exposure:'Экспозиция', whiteBalance:'Баланс белого', color:'Цвет', grade:'Грейдинг', lut:'LUT', iso:'ISO', shutter:'Затвор', frameRate:'Частота кадров', temperature:'Температура', tint:'Оттенок', saturation:'Насыщенность', contrast:'Контраст', pivot:'Опора', lift:'Лифт', gamma:'Гамма', gain:'Гейн', natural:'Нейтральный', film:'Плёнка', cinematic:'Кино', portrait:'Портрет', night:'Ночь', golden:'Золотой', videoSaved:'✓ Видео сохранено', camUnavailable:'Камера недоступна', apiKey:'Ключ Anthropic API', apiHint:'Получить: console.anthropic.com', vignette:'Виньетка', filmGrain:'Зерно', hue:'Тон', red:'К', green:'З', blue:'С' },
+  de: { chooseLanguage:'Sprache wählen', aiAuto:'KI AUTO', aiOff:'KI AUS', aiControlling:'KI steuert', takeManual:'Manuell', letAI:'KI überlassen', manual:'MANUELL', settings:'Einstellungen', save:'Speichern', reset:'Zurücksetzen', exposure:'Belichtung', whiteBalance:'Weißabgleich', color:'Farbe', grade:'Grading', lut:'LUT', iso:'ISO', shutter:'Verschluss', frameRate:'Bildrate', temperature:'Temperatur', tint:'Tönung', saturation:'Sättigung', contrast:'Kontrast', pivot:'Pivot', lift:'Lift', gamma:'Gamma', gain:'Gain', natural:'Natürlich', film:'Film', cinematic:'Kino', portrait:'Porträt', night:'Nacht', golden:'Golden', videoSaved:'✓ Video gespeichert', camUnavailable:'Kamera nicht verfügbar', apiKey:'Anthropic API-Schlüssel', apiHint:'Schlüssel: console.anthropic.com', vignette:'Vignette', filmGrain:'Filmkorn', hue:'Farbton', red:'R', green:'G', blue:'B' },
+  fr: { chooseLanguage:'Choisissez votre langue', aiAuto:'IA AUTO', aiOff:'IA OFF', aiControlling:"L'IA contrôle", takeManual:'Contrôle manuel', letAI:"Laisser l'IA", manual:'MANUEL', settings:'Paramètres', save:'Enregistrer', reset:'Réinitialiser', exposure:'Exposition', whiteBalance:'Balance des blancs', color:'Couleur', grade:'Étalonnage', lut:'LUT', iso:'ISO', shutter:'Obturateur', frameRate:'Fréq. images', temperature:'Température', tint:'Teinte', saturation:'Saturation', contrast:'Contraste', pivot:'Pivot', lift:'Lift', gamma:'Gamma', gain:'Gain', natural:'Naturel', film:'Film', cinematic:'Cinéma', portrait:'Portrait', night:'Nuit', golden:'Doré', videoSaved:'✓ Vidéo sauvegardée', camUnavailable:'Caméra indisponible', apiKey:'Clé API Anthropic', apiHint:'Obtenir: console.anthropic.com', vignette:'Vignette', filmGrain:'Grain', hue:'Teinte', red:'R', green:'V', blue:'B' },
+  es: { chooseLanguage:'Elige tu idioma', aiAuto:'IA AUTO', aiOff:'IA OFF', aiControlling:'IA controlando', takeManual:'Control manual', letAI:'Dejar a la IA', manual:'MANUAL', settings:'Ajustes', save:'Guardar', reset:'Restablecer', exposure:'Exposición', whiteBalance:'Balance de blancos', color:'Color', grade:'Gradación', lut:'LUT', iso:'ISO', shutter:'Obturador', frameRate:'Fotogramas/s', temperature:'Temperatura', tint:'Tinte', saturation:'Saturación', contrast:'Contraste', pivot:'Pivote', lift:'Lift', gamma:'Gamma', gain:'Gain', natural:'Natural', film:'Película', cinematic:'Cinemático', portrait:'Retrato', night:'Noche', golden:'Dorado', videoSaved:'✓ Vídeo guardado', camUnavailable:'Cámara no disponible', apiKey:'Clave API Anthropic', apiHint:'Obtener: console.anthropic.com', vignette:'Viñeta', filmGrain:'Grano', hue:'Matiz', red:'R', green:'G', blue:'B' },
+  it: { chooseLanguage:'Scegli la lingua', aiAuto:'IA AUTO', aiOff:'IA OFF', aiControlling:"L'IA controlla", takeManual:'Controllo manuale', letAI:"Lascia all'IA", manual:'MANUALE', settings:'Impostazioni', save:'Salva', reset:'Ripristina', exposure:'Esposizione', whiteBalance:'Bilanciamento bianco', color:'Colore', grade:'Gradazione', lut:'LUT', iso:'ISO', shutter:'Otturatore', frameRate:'Frame rate', temperature:'Temperatura', tint:'Tinta', saturation:'Saturazione', contrast:'Contrasto', pivot:'Perno', lift:'Lift', gamma:'Gamma', gain:'Gain', natural:'Naturale', film:'Pellicola', cinematic:'Cinematografico', portrait:'Ritratto', night:'Notte', golden:'Dorato', videoSaved:'✓ Video salvato', camUnavailable:'Fotocamera non disponibile', apiKey:'Chiave API Anthropic', apiHint:'Ottieni: console.anthropic.com', vignette:'Vignetta', filmGrain:'Grana', hue:'Tonalità', red:'R', green:'V', blue:'B' },
+  pt: { chooseLanguage:'Escolha seu idioma', aiAuto:'IA AUTO', aiOff:'IA OFF', aiControlling:'IA controlando', takeManual:'Controle manual', letAI:'Deixar para IA', manual:'MANUAL', settings:'Configurações', save:'Salvar', reset:'Redefinir', exposure:'Exposição', whiteBalance:'Balanço de branco', color:'Cor', grade:'Gradação', lut:'LUT', iso:'ISO', shutter:'Obturador', frameRate:'Taxa de quadros', temperature:'Temperatura', tint:'Matiz', saturation:'Saturação', contrast:'Contraste', pivot:'Pivô', lift:'Lift', gamma:'Gamma', gain:'Gain', natural:'Natural', film:'Filme', cinematic:'Cinematográfico', portrait:'Retrato', night:'Noite', golden:'Dourado', videoSaved:'✓ Vídeo salvo', camUnavailable:'Câmera indisponível', apiKey:'Chave API Anthropic', apiHint:'Obter: console.anthropic.com', vignette:'Vinheta', filmGrain:'Grão', hue:'Matiz', red:'R', green:'V', blue:'A' },
+  zh: { chooseLanguage:'选择语言', aiAuto:'AI 自动', aiOff:'AI 关闭', aiControlling:'AI 控制中', takeManual:'手动控制', letAI:'交给 AI', manual:'手动', settings:'设置', save:'保存', reset:'重置', exposure:'曝光', whiteBalance:'白平衡', color:'颜色', grade:'调色', lut:'LUT', iso:'ISO', shutter:'快门', frameRate:'帧率', temperature:'色温', tint:'色调', saturation:'饱和度', contrast:'对比度', pivot:'支点', lift:'阴影', gamma:'中间调', gain:'高光', natural:'自然', film:'胶片', cinematic:'电影', portrait:'人像', night:'夜间', golden:'黄金', videoSaved:'✓ 视频已保存', camUnavailable:'摄像头不可用', apiKey:'Anthropic API 密钥', apiHint:'获取: console.anthropic.com', vignette:'暗角', filmGrain:'胶片颗粒', hue:'色相', red:'R', green:'G', blue:'B' },
+  ja: { chooseLanguage:'言語を選択', aiAuto:'AI 自動', aiOff:'AI オフ', aiControlling:'AI が制御中', takeManual:'手動操作', letAI:'AI に任せる', manual:'マニュアル', settings:'設定', save:'保存', reset:'リセット', exposure:'露出', whiteBalance:'ホワイトバランス', color:'色', grade:'グレーディング', lut:'LUT', iso:'ISO', shutter:'シャッター', frameRate:'フレームレート', temperature:'色温度', tint:'ティント', saturation:'彩度', contrast:'コントラスト', pivot:'ピボット', lift:'リフト', gamma:'ガンマ', gain:'ゲイン', natural:'ナチュラル', film:'フィルム', cinematic:'シネマ', portrait:'ポートレート', night:'ナイト', golden:'ゴールデン', videoSaved:'✓ 動画保存完了', camUnavailable:'カメラ使用不可', apiKey:'Anthropic APIキー', apiHint:'取得: console.anthropic.com', vignette:'ビネット', filmGrain:'フィルムグレイン', hue:'色相', red:'R', green:'G', blue:'B' },
+  ko: { chooseLanguage:'언어를 선택하세요', aiAuto:'AI 자동', aiOff:'AI 끄기', aiControlling:'AI가 제어 중', takeManual:'수동 제어', letAI:'AI에게 맡기기', manual:'수동', settings:'설정', save:'저장', reset:'초기화', exposure:'노출', whiteBalance:'화이트 밸런스', color:'색상', grade:'색 보정', lut:'LUT', iso:'ISO', shutter:'셔터', frameRate:'프레임 레이트', temperature:'색온도', tint:'틴트', saturation:'채도', contrast:'대비', pivot:'피벗', lift:'리프트', gamma:'감마', gain:'게인', natural:'자연', film:'필름', cinematic:'시네마틱', portrait:'인물', night:'야간', golden:'황금', videoSaved:'✓ 영상 저장됨', camUnavailable:'카메라 사용 불가', apiKey:'Anthropic API 키', apiHint:'발급: console.anthropic.com', vignette:'비네트', filmGrain:'필름 그레인', hue:'색조', red:'R', green:'G', blue:'B' },
+  ar: { chooseLanguage:'اختر لغتك', aiAuto:'ذكاء تلقائي', aiOff:'ذكاء إيقاف', aiControlling:'الذكاء يتحكم', takeManual:'تحكم يدوي', letAI:'دع الذكاء يتحكم', manual:'يدوي', settings:'الإعدادات', save:'حفظ', reset:'إعادة تعيين', exposure:'التعرض', whiteBalance:'توازن الأبيض', color:'اللون', grade:'تدرج', lut:'LUT', iso:'ISO', shutter:'الغالق', frameRate:'معدل الإطارات', temperature:'درجة الحرارة', tint:'الصبغة', saturation:'التشبع', contrast:'التباين', pivot:'المحور', lift:'الظلال', gamma:'غاما', gain:'الإضاءة', natural:'طبيعي', film:'فيلم', cinematic:'سينمائي', portrait:'بورتريه', night:'ليلي', golden:'ذهبي', videoSaved:'✓ تم حفظ الفيديو', camUnavailable:'الكاميرا غير متاحة', apiKey:'مفتاح Anthropic API', apiHint:'احصل عليه: console.anthropic.com', vignette:'فينيت', filmGrain:'حبيبات', hue:'درجة اللون', red:'أ', green:'خ', blue:'ز' },
+  hi: { chooseLanguage:'अपनी भाषा चुनें', aiAuto:'AI स्वतः', aiOff:'AI बंद', aiControlling:'AI नियंत्रण में', takeManual:'मैनुअल नियंत्रण', letAI:'AI को सौंपें', manual:'मैनुअल', settings:'सेटिंग्स', save:'सहेजें', reset:'रीसेट', exposure:'एक्सपोज़र', whiteBalance:'व्हाइट बैलेंस', color:'रंग', grade:'ग्रेडिंग', lut:'LUT', iso:'ISO', shutter:'शटर', frameRate:'फ्रेम दर', temperature:'तापमान', tint:'टिंट', saturation:'संतृप्ति', contrast:'कंट्रास्ट', pivot:'धुरी', lift:'लिफ्ट', gamma:'गामा', gain:'गेन', natural:'प्राकृतिक', film:'फिल्म', cinematic:'सिनेमाई', portrait:'पोर्ट्रेट', night:'रात', golden:'सुनहरा', videoSaved:'✓ वीडियो सहेजा गया', camUnavailable:'कैमरा अनुपलब्ध', apiKey:'Anthropic API कुंजी', apiHint:'प्राप्त करें: console.anthropic.com', vignette:'विग्नेट', filmGrain:'ग्रेन', hue:'रंगत', red:'लाल', green:'हरा', blue:'नीला' },
 };
 
-// ─── Camera ───────────────────────────────────────────────────────────────
-async function startCamera() {
-  try {
-    if (S.stream) S.stream.getTracks().forEach(t => t.stop());
-    const constraints = {
-      video: { facingMode: { ideal: S.facingMode }, width: { ideal: 1920 }, height: { ideal: 1080 } },
-      audio: false
-    };
-    S.stream = await navigator.mediaDevices.getUserMedia(constraints);
-    document.getElementById('video').srcObject = S.stream;
-  } catch (e) {
-    // Try without facingMode constraint
-    try {
-      S.stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      document.getElementById('video').srcObject = S.stream;
-    } catch (e2) {
-      console.warn('Camera not available:', e2.message);
-    }
-  }
-}
+// ─── LUT presets ─────────────────────────────────────────────────────────────
+const LUTS = {
+  natural:   { liftR:0,     liftG:0,     liftB:0,     gainR:1,    gainG:1,    gainB:1,    contrast:1.0,  saturate:1.0,  hueRot:0 },
+  film:      { liftR:-0.01, liftG:0,     liftB:0.02,  gainR:1.04, gainG:1.0,  gainB:0.97, contrast:0.95, saturate:0.9,  hueRot:-2 },
+  cinematic: { liftR:-0.02, liftG:0,     liftB:0.03,  gainR:1.08, gainG:1.0,  gainB:0.94, contrast:1.15, saturate:1.2,  hueRot:-4 },
+  portrait:  { liftR:0.01,  liftG:0.005, liftB:0,     gainR:1.05, gainG:1.0,  gainB:0.98, contrast:0.98, saturate:1.08, hueRot:2 },
+  night:     { liftR:0,     liftG:0.01,  liftB:0.03,  gainR:1.0,  gainG:1.0,  gainB:1.02, contrast:1.05, saturate:0.8,  hueRot:4 },
+  golden:    { liftR:0.02,  liftG:0,     liftB:-0.01, gainR:1.12, gainG:1.02, gainB:0.9,  contrast:1.05, saturate:1.25, hueRot:6 },
+};
 
-document.getElementById('switch-btn').addEventListener('click', () => {
-  S.facingMode = S.facingMode === 'environment' ? 'user' : 'environment';
-  startCamera();
-});
-
-document.getElementById('shutter-btn').addEventListener('click', shoot);
-
-function shoot() {
-  const video = document.getElementById('video');
-  const c = document.getElementById('canvas-capture');
-  const w = video.videoWidth || 1280;
-  const h = video.videoHeight || 720;
-  c.width = w; c.height = h;
-  const ctx = c.getContext('2d');
-  if (S.facingMode === 'user') { ctx.save(); ctx.translate(w, 0); ctx.scale(-1, 1); }
-  ctx.drawImage(video, 0, 0, w, h);
-  if (S.facingMode === 'user') ctx.restore();
-  S.dataUrl = c.toDataURL('image/jpeg', 0.92);
-
-  const img = document.getElementById('thumb-img');
-  img.src = S.dataUrl; img.style.display = 'block';
-  document.getElementById('thumb-icon').style.display = 'none';
-
-  showPreview();
-}
-
-function onThumbClick() { if (S.dataUrl) showPreview(); }
-
-// ─── Screens ──────────────────────────────────────────────────────────────
-function go(name) {
-  ['camera','preview','edit'].forEach(s =>
-    document.getElementById('screen-' + s).classList.toggle('hidden', s !== name));
-}
-
-// ─── AI ───────────────────────────────────────────────────────────────────
-async function callAI(b64, mode, msg = '') {
-  if (!S.apiKey) { openSettings(); throw new Error('Нет ключа'); }
-  const r = await fetch('/api/analyze', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': S.apiKey },
-    body: JSON.stringify({ imageBase64: b64, mode, message: msg })
-  });
-  if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || r.statusText); }
-  return r.json();
-}
-
-function b64(dataUrl) { return dataUrl.replace(/^data:image\/\w+;base64,/, ''); }
-
-function frameB64() {
-  const v = document.getElementById('video');
-  const c = document.createElement('canvas');
-  c.width = Math.min(v.videoWidth || 640, 800);
-  c.height = Math.round((v.videoHeight || 480) * (c.width / (v.videoWidth || 640)));
-  c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
-  return c.toDataURL('image/jpeg', 0.7).replace(/^data:image\/\w+;base64,/, '');
-}
-
-// ─── Tips ─────────────────────────────────────────────────────────────────
-const aiBtn = document.getElementById('ai-btn');
-const aiLabel = document.getElementById('ai-btn-label');
-const tipsCard = document.getElementById('tips-card');
-
-aiBtn.addEventListener('click', async () => {
-  if (aiBtn.classList.contains('loading')) return;
-  aiBtn.classList.add('loading'); aiLabel.textContent = 'Анализирую...';
-  try {
-    const data = await callAI(frameB64(), 'tips');
-    showTips(data);
-  } catch(e) {
-    aiLabel.textContent = e.message;
-    setTimeout(() => { aiLabel.textContent = 'AI Советник'; }, 2500);
-  } finally {
-    aiBtn.classList.remove('loading'); aiLabel.textContent = 'AI Советник';
-  }
-});
-
-function showTips(d) {
-  const icons = ['📐','💡','🌅','🎯','✨'];
-  document.getElementById('tips-score').textContent = d.score ? d.score + '/10' : '—';
-  document.getElementById('tips-body').innerHTML = (d.tips || []).map((t,i) =>
-    `<div class="tip-row"><span class="tip-icon">${icons[i%icons.length]}</span><span>${t}</span></div>`
-  ).join('');
-  const moodEl = document.getElementById('tips-mood');
-  if (d.mood) { moodEl.textContent = '✦ ' + d.mood; moodEl.style.display = 'block'; }
-  tipsCard.classList.add('show');
-  setTimeout(() => tipsCard.classList.remove('show'), 8000);
-}
-
-// ─── Preview ──────────────────────────────────────────────────────────────
-function showPreview() {
-  document.getElementById('preview-img').src = S.dataUrl;
-  document.getElementById('score-overlay').style.display = 'none';
-  document.getElementById('ai-loading').style.display = 'flex';
-  document.getElementById('ai-result').style.display = 'none';
-  document.getElementById('btn-edit').disabled = true;
-  go('preview');
-
-  callAI(b64(S.dataUrl), 'full').then(data => {
-    S.analysis = data;
-    renderAnalysis(data);
-  }).catch(e => {
-    document.getElementById('ai-loading').innerHTML =
-      `<div style="color:var(--red);font-size:14px;text-align:center">⚠️ ${e.message}</div>`;
-  });
-}
-
-function renderAnalysis(d) {
-  document.getElementById('ai-loading').style.display = 'none';
-  document.getElementById('ai-result').style.display = 'block';
-  if (d.score) {
-    document.getElementById('score-num').textContent = d.score;
-    document.getElementById('score-overlay').style.display = 'block';
-  }
-  if (d.mood) {
-    document.getElementById('res-mood').textContent = d.mood;
-    document.getElementById('sec-mood').style.display = 'block';
-  }
-  document.getElementById('res-comp').textContent = d.composition || '—';
-  document.getElementById('res-strong').innerHTML = (d.strengths||[]).map(s =>
-    `<span class="chip chip-green">✓ ${s}</span>`).join('');
-  document.getElementById('res-improve').innerHTML = (d.improvements||[]).map(i =>
-    `<span class="chip chip-gold">→ ${i}</span>`).join('');
-  document.getElementById('btn-edit').disabled = false;
-}
-
-document.getElementById('preview-back').addEventListener('click', () => go('camera'));
-document.getElementById('btn-retake').addEventListener('click', () => go('camera'));
-document.getElementById('btn-edit').addEventListener('click', openEditor);
-
-// ─── Editor ───────────────────────────────────────────────────────────────
-const editCanvas = document.getElementById('edit-canvas');
-const ectx = editCanvas.getContext('2d');
-
-const FILTERS = [
-  { id:'natural', name:'Обычный', css:'' },
-  { id:'warm',    name:'Тёплый',  css:'sepia(0.2) saturate(1.4)' },
-  { id:'cool',    name:'Холодный',css:'hue-rotate(20deg) saturate(1.1)' },
-  { id:'vivid',   name:'Яркий',   css:'saturate(1.9) contrast(1.1)' },
-  { id:'bw',      name:'Ч/Б',     css:'grayscale(1)' },
-  { id:'fade',    name:'Фейд',    css:'brightness(1.1) saturate(0.65) contrast(0.88)' },
-  { id:'drama',   name:'Драма',   css:'contrast(1.45) saturate(1.25) brightness(0.88)' },
-  { id:'golden',  name:'Золотой', css:'sepia(0.4) saturate(1.6) brightness(1.05)' },
+const LANGUAGES = [
+  { code:'en', flag:'🇺🇸', name:'English' },
+  { code:'ru', flag:'🇷🇺', name:'Русский' },
+  { code:'de', flag:'🇩🇪', name:'Deutsch' },
+  { code:'fr', flag:'🇫🇷', name:'Français' },
+  { code:'es', flag:'🇪🇸', name:'Español' },
+  { code:'it', flag:'🇮🇹', name:'Italiano' },
+  { code:'pt', flag:'🇧🇷', name:'Português' },
+  { code:'zh', flag:'🇨🇳', name:'中文' },
+  { code:'ja', flag:'🇯🇵', name:'日本語' },
+  { code:'ko', flag:'🇰🇷', name:'한국어' },
+  { code:'ar', flag:'🇸🇦', name:'العربية' },
+  { code:'hi', flag:'🇮🇳', name:'हिन्दी' },
 ];
 
-function openEditor() {
-  go('edit');
-  const img = new Image();
-  img.onload = () => {
-    const stage = editCanvas.parentElement;
-    const ratio = Math.min(stage.clientWidth / img.width, stage.clientHeight / img.height, 1);
-    editCanvas.width = img.width; editCanvas.height = img.height;
-    editCanvas.style.width = Math.round(img.width * ratio) + 'px';
-    editCanvas.style.height = Math.round(img.height * ratio) + 'px';
-    S.origImg = img;
-    S.adj = { br: 1, co: 1, sa: 1, wa: 0 };
-    S.filter = 'natural';
-    resetSliders();
-    draw();
-    buildThumbs(img);
+// ─── State ────────────────────────────────────────────────────────────────────
+function defaultParams() {
+  return {
+    exposure:0, temperature:5600, tint:0, contrast:1, pivot:0.5, saturation:1, hue:0,
+    liftR:0, liftG:0, liftB:0, gammaR:0, gammaG:0, gammaB:0, gainR:1, gainG:1, gainB:1,
+    sharpness:0.5, vignette:0, filmGrain:0, lut:'natural',
   };
-  img.src = S.dataUrl;
-  if (S.analysis?.colorCorrection) {
-    const cc = S.analysis.colorCorrection;
-    S.adj = { br: cc.brightness||1, co: cc.contrast||1, sa: cc.saturation||1, wa: cc.warmth||0 };
-  }
 }
 
-function resetSliders() {
-  document.getElementById('sl-br').value = Math.round(S.adj.br*100);
-  document.getElementById('sl-co').value = Math.round(S.adj.co*100);
-  document.getElementById('sl-sa').value = Math.round(S.adj.sa*100);
-  document.getElementById('sl-wa').value = S.adj.wa;
-  updateLabels();
-}
+const S = {
+  lang: localStorage.getItem('ailens_lang') || null,
+  apiKey: localStorage.getItem('ailens_key') || '',
+  hasServerKey: false,
+  facing: 'environment',
+  stream: null,
+  mode: 'ai',
+  isRecording: false,
+  recorder: null,
+  chunks: [],
+  lastBlob: null,
+  recStart: null,
+  recTick: null,
+  aiTimer: null,
+  aiActive: false,
+  renderRunning: false,
+  progressInterval: null,
+  aiCycleStart: null,
+  overlays: { grid:false, zebra:false, peaking:false, histogram:false },
+  params: { iso:800, shutterAngle:180, fps:24, temperature:5600, tint:0 },
+  cur: defaultParams(),
+  tgt: defaultParams(),
+  animFrame: null,
+  frameCount: 0,
+  activeTab: 'exposure',
+};
 
-function updateLabels() {
-  document.getElementById('v-br').textContent = document.getElementById('sl-br').value + '%';
-  document.getElementById('v-co').textContent = document.getElementById('sl-co').value + '%';
-  document.getElementById('v-sa').textContent = document.getElementById('sl-sa').value + '%';
-  document.getElementById('v-wa').textContent = document.getElementById('sl-wa').value;
-}
+// ─── Translation helpers ──────────────────────────────────────────────────────
+function t(key) { return (T[S.lang] || T.en)[key] || T.en[key] || key; }
 
-['br','co','sa','wa'].forEach(k => {
-  document.getElementById('sl-' + k).addEventListener('input', () => {
-    S.adj.br = +document.getElementById('sl-br').value / 100;
-    S.adj.co = +document.getElementById('sl-co').value / 100;
-    S.adj.sa = +document.getElementById('sl-sa').value / 100;
-    S.adj.wa = +document.getElementById('sl-wa').value;
-    updateLabels(); draw();
-  });
-});
-
-function draw() {
-  if (!S.origImg) return;
-  const f = FILTERS.find(x => x.id === S.filter) || FILTERS[0];
-  const filter = [`brightness(${S.adj.br})`, `contrast(${S.adj.co})`, `saturate(${S.adj.sa})`, f.css].filter(Boolean).join(' ');
-  ectx.filter = filter;
-  ectx.drawImage(S.origImg, 0, 0);
-  ectx.filter = 'none';
-  if (S.adj.wa !== 0) {
-    ectx.globalCompositeOperation = 'multiply';
-    const a = Math.abs(S.adj.wa) / 180;
-    ectx.fillStyle = S.adj.wa > 0 ? `rgba(255,130,0,${a})` : `rgba(0,80,255,${a})`;
-    ectx.fillRect(0, 0, editCanvas.width, editCanvas.height);
-    ectx.globalCompositeOperation = 'source-over';
-  }
-}
-
-function buildThumbs(img) {
-  const row = document.getElementById('filters-row');
-  row.innerHTML = '';
-  FILTERS.forEach(f => {
-    const item = document.createElement('div');
-    item.className = 'filter-item' + (f.id === S.filter ? ' active' : '');
-    const ring = document.createElement('div'); ring.className = 'filter-ring';
-    const tc = document.createElement('canvas'); tc.width = 64; tc.height = 64;
-    const ctx = tc.getContext('2d');
-    const side = Math.min(img.width, img.height);
-    ctx.filter = f.css || 'none';
-    ctx.drawImage(img, (img.width-side)/2, (img.height-side)/2, side, side, 0, 0, 64, 64);
-    ring.appendChild(tc);
-    const name = document.createElement('div'); name.className = 'filter-name'; name.textContent = f.name;
-    item.appendChild(ring); item.appendChild(name);
-    item.addEventListener('click', () => {
-      S.filter = f.id;
-      document.querySelectorAll('.filter-item').forEach(el => el.classList.remove('active'));
-      item.classList.add('active');
-      draw();
-    });
-    row.appendChild(item);
+function applyTranslations() {
+  document.querySelectorAll('[data-t]').forEach(el => {
+    const key = el.dataset.t;
+    el.textContent = t(key);
   });
 }
 
-// Save
-document.getElementById('save-btn').addEventListener('click', () => {
-  const a = document.createElement('a');
-  a.download = 'ai-lens-' + Date.now() + '.jpg';
-  a.href = editCanvas.toDataURL('image/jpeg', 0.95);
-  a.click();
-});
-
-// ─── AI Chat ──────────────────────────────────────────────────────────────
-const chatMsgs = document.getElementById('chat-msgs');
-const chatIn = document.getElementById('chat-in');
-
-function addBubble(role, text) {
-  const d = document.createElement('div');
-  d.className = 'bubble ' + role;
-  d.textContent = text;
-  chatMsgs.appendChild(d);
-  chatMsgs.scrollTop = chatMsgs.scrollHeight;
-  return d;
+// ─── Language screen ──────────────────────────────────────────────────────────
+function buildLangScreen() {
+  const grid = document.getElementById('lang-grid');
+  grid.innerHTML = '';
+  LANGUAGES.forEach(l => {
+    const card = document.createElement('div');
+    card.className = 'lang-card';
+    card.innerHTML = `<div class="lang-flag">${l.flag}</div><div class="lang-name">${l.name}</div>`;
+    card.onclick = () => selectLanguage(l.code);
+    grid.appendChild(card);
+  });
 }
 
-async function sendChat() {
-  const text = chatIn.value.trim(); if (!text) return;
-  chatIn.value = '';
-  addBubble('user', text);
-  const thinking = addBubble('ai thinking', '⏳ Думаю...');
+function selectLanguage(code) {
+  S.lang = code;
+  localStorage.setItem('ailens_lang', code);
+  showCamera();
+}
+
+// ─── Camera screen ────────────────────────────────────────────────────────────
+function showCamera() {
+  document.getElementById('screen-lang').classList.add('hidden');
+  document.getElementById('screen-camera').classList.remove('hidden');
+  applyTranslations();
+  updateModeUI();
+  updateTopChips();
+  initCamera();
+}
+
+async function initCamera() {
   try {
-    const data = await callAI(b64(S.dataUrl), 'edit', text);
-    thinking.textContent = data.response || 'Готово!';
-    thinking.classList.remove('thinking');
-    if (data.adjustments) {
-      const a = data.adjustments;
-      S.adj = { br: a.brightness||1, co: a.contrast||1, sa: a.saturation||1, wa: a.warmth||0 };
-      resetSliders(); draw();
-      addBubble('ai', '✅ Применил! Можешь дополнительно подкрутить слайдерами.');
+    if (S.stream) S.stream.getTracks().forEach(t => t.stop());
+    S.stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: S.facing }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+      audio: true,
+    });
+    document.getElementById('video').srcObject = S.stream;
+    document.getElementById('screen-perm').classList.add('hidden');
+    if (!S.renderRunning) startRenderLoop();
+    scheduleAI(1200);
+    startProgressBar();
+  } catch {
+    try {
+      S.stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      document.getElementById('video').srcObject = S.stream;
+      document.getElementById('screen-perm').classList.add('hidden');
+      if (!S.renderRunning) startRenderLoop();
+      scheduleAI(1200);
+      startProgressBar();
+    } catch (e2) {
+      document.getElementById('screen-camera').classList.add('hidden');
+      document.getElementById('screen-perm').classList.remove('hidden');
+      document.getElementById('perm-text').textContent = t('camUnavailable');
     }
-    if (data.removeBackground) {
-      addBubble('ai', '🔧 Удаление объектов — следующая фича. Скоро добавим!');
-    }
-  } catch(e) {
-    thinking.textContent = '⚠️ ' + e.message; thinking.classList.remove('thinking');
   }
 }
 
-document.getElementById('send-btn').addEventListener('click', sendChat);
-chatIn.addEventListener('keydown', e => { if (e.key === 'Enter') sendChat(); });
-
-// ─── Voice ────────────────────────────────────────────────────────────────
-const micBtn = document.getElementById('mic-btn');
-let rec = null;
-if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  rec = new SR(); rec.lang = 'ru-RU'; rec.continuous = false;
-  rec.onresult = e => { chatIn.value = e.results[0][0].transcript; micBtn.classList.remove('on'); S.listening = false; sendChat(); };
-  rec.onend = () => { micBtn.classList.remove('on'); S.listening = false; };
-  micBtn.addEventListener('click', () => {
-    if (S.listening) { rec.stop(); return; }
-    S.listening = true; micBtn.classList.add('on'); rec.start();
-  });
-} else { micBtn.style.opacity = '0.3'; micBtn.title = 'Не поддерживается'; }
-
-// ─── Tabs ─────────────────────────────────────────────────────────────────
-document.querySelectorAll('.tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    const id = tab.dataset.tab;
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-    tab.classList.add('active');
-    document.getElementById('panel-' + id).classList.add('active');
-  });
-});
-
-// ─── Grid ─────────────────────────────────────────────────────────────────
-document.getElementById('grid-btn').addEventListener('click', () => {
-  S.grid = !S.grid;
-  document.getElementById('grid').classList.toggle('on', S.grid);
-  document.getElementById('grid-btn').style.color = S.grid ? 'var(--gold)' : '#fff';
-});
-
-// ─── Edit back ────────────────────────────────────────────────────────────
-document.getElementById('edit-back').addEventListener('click', () => go('preview'));
-
-// ─── Settings ─────────────────────────────────────────────────────────────
-function openSettings() {
-  const ov = document.getElementById('settings-overlay');
-  document.getElementById('api-key').value = S.apiKey;
-  ov.classList.add('show');
+function flipCamera() {
+  const btn = document.getElementById('flip-btn');
+  btn.classList.add('spinning');
+  setTimeout(() => btn.classList.remove('spinning'), 400);
+  S.facing = S.facing === 'environment' ? 'user' : 'environment';
+  initCamera();
 }
-document.getElementById('settings-btn').addEventListener('click', openSettings);
-document.getElementById('settings-overlay').addEventListener('click', e => {
-  if (e.target === document.getElementById('settings-overlay'))
-    document.getElementById('settings-overlay').classList.remove('show');
-});
-document.getElementById('save-settings').addEventListener('click', () => {
-  S.apiKey = document.getElementById('api-key').value.trim();
-  localStorage.setItem('apiKey', S.apiKey);
-  document.getElementById('settings-overlay').classList.remove('show');
-});
 
-// ─── Init ─────────────────────────────────────────────────────────────────
-startCamera();
-if (!S.apiKey) setTimeout(openSettings, 600);
+// ─── Top chips ────────────────────────────────────────────────────────────────
+function updateTopChips() {
+  document.getElementById('chip-wb').textContent = S.params.temperature + 'K';
+  document.getElementById('chip-iso').textContent = 'ISO ' + S.params.iso;
+  document.getElementById('chip-sh').textContent = S.params.shutterAngle + '°';
+  document.getElementById('chip-fps').textContent = S.params.fps + 'fps';
+}
+
+// ─── Overlay toggles ─────────────────────────────────────────────────────────
+function toggleOverlay(name) {
+  S.overlays[name] = !S.overlays[name];
+  document.getElementById('btn-' + name).classList.toggle('active', S.overlays[name]);
+  if (name === 'grid') document.getElementById('grid-overlay').classList.toggle('hidden', !S.overlays.grid);
+  if (name === 'histogram') document.getElementById('histogram-widget').classList.toggle('show', S.overlays.histogram);
+}
+
+// ─── Recording ────────────────────────────────────────────────────────────────
+function toggleRecord() { S.isRecording ? stopRecord() : startRecord(); }
+
+function startRecord() {
+  if (!S.stream) return;
+  S.chunks = [];
+  const mime = ['video/mp4;codecs=h264','video/mp4','video/webm;codecs=vp9','video/webm'].find(m => MediaRecorder.isTypeSupported(m)) || '';
+  try { S.recorder = new MediaRecorder(S.stream, mime ? { mimeType: mime } : {}); }
+  catch { S.recorder = new MediaRecorder(S.stream); }
+  S.recorder.ondataavailable = e => { if (e.data?.size) S.chunks.push(e.data); };
+  S.recorder.onstop = () => {
+    S.lastBlob = new Blob(S.chunks, { type: S.recorder.mimeType });
+    saveVideo();
+  };
+  S.recorder.start(1000);
+  S.isRecording = true;
+  S.recStart = Date.now();
+  document.getElementById('rec-btn').classList.add('recording');
+  document.getElementById('rec-badge').classList.remove('hidden');
+  S.recTick = setInterval(updateTimecode, 1000 / S.params.fps);
+}
+
+function stopRecord() {
+  if (S.recorder?.state !== 'inactive') S.recorder.stop();
+  S.isRecording = false;
+  clearInterval(S.recTick);
+  document.getElementById('rec-btn').classList.remove('recording');
+  document.getElementById('rec-badge').classList.add('hidden');
+}
+
+function updateTimecode() {
+  const elapsed = Date.now() - S.recStart;
+  const totalFrames = Math.floor(elapsed / 1000 * S.params.fps);
+  const ff = totalFrames % S.params.fps;
+  const ss = Math.floor(totalFrames / S.params.fps) % 60;
+  const mm = Math.floor(totalFrames / S.params.fps / 60) % 60;
+  const hh = Math.floor(totalFrames / S.params.fps / 3600);
+  document.getElementById('rec-tc').textContent =
+    String(hh).padStart(2,'0') + ':' + String(mm).padStart(2,'0') + ':' +
+    String(ss).padStart(2,'0') + ':' + String(ff).padStart(2,'0');
+}
+
+async function saveVideo() {
+  if (!S.lastBlob) return;
+  const ext = S.lastBlob.type.includes('mp4') ? 'mp4' : 'webm';
+  const fileName = 'ailens-' + Date.now() + '.' + ext;
+  try {
+    const file = new File([S.lastBlob], fileName, { type: S.lastBlob.type });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: 'AI Lens' });
+      toast(t('videoSaved')); return;
+    }
+  } catch (e) { if (e.name === 'AbortError') return; }
+  const url = URL.createObjectURL(S.lastBlob);
+  const a = document.createElement('a');
+  a.href = url; a.download = fileName; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  toast(t('videoSaved'));
+}
+
+// ─── AI mode ──────────────────────────────────────────────────────────────────
+function toggleAIMode() {
+  if (S.mode === 'ai') {
+    S.mode = 'manual';
+  } else {
+    enableAI();
+  }
+  updateModeUI();
+}
+
+function enableAI() {
+  S.mode = 'ai';
+  closeManual();
+  updateModeUI();
+  runAI();
+}
+
+function updateModeUI() {
+  const aiBtn = document.getElementById('ai-mode-btn');
+  aiBtn.classList.toggle('active', S.mode === 'ai');
+  aiBtn.textContent = S.mode === 'ai' ? t('aiAuto') : t('aiOff');
+}
+
+// ─── AI Analysis ──────────────────────────────────────────────────────────────
+function scheduleAI(delay) {
+  clearTimeout(S.aiTimer);
+  if (S.mode === 'ai') S.aiTimer = setTimeout(runAI, delay || 30000);
+}
+
+function startProgressBar() {
+  clearInterval(S.progressInterval);
+  S.aiCycleStart = Date.now();
+  S.progressInterval = setInterval(() => {
+    if (S.mode !== 'ai') { document.getElementById('ai-progress-fill').style.width = '0%'; return; }
+    const pct = Math.min((Date.now() - S.aiCycleStart) / 30000 * 100, 100);
+    document.getElementById('ai-progress-fill').style.width = pct + '%';
+  }, 300);
+}
+
+async function runAI() {
+  if (S.mode !== 'ai') return;
+  if (!S.apiKey && !S.hasServerKey) { scheduleAI(30000); return; }
+  const b64 = captureFrame();
+  if (!b64) { scheduleAI(10000); return; }
+  setAIActive(true);
+  try {
+    const res = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': S.apiKey },
+      body: JSON.stringify({ imageBase64: b64 }),
+    });
+    if (res.ok) {
+      const p = await res.json();
+      applyAIParams(p);
+      const lutKey = p.lut || 'natural';
+      document.getElementById('ai-lut-name').textContent = t(lutKey);
+      toast('✦ AI: ' + t(lutKey));
+    }
+  } catch { /* silent */ }
+  finally {
+    setAIActive(false);
+    S.aiCycleStart = Date.now();
+    scheduleAI(30000);
+  }
+}
+
+function captureFrame() {
+  const v = document.getElementById('video');
+  if (!v.videoWidth) return null;
+  const c = document.createElement('canvas');
+  c.width = 320; c.height = Math.round(v.videoHeight / v.videoWidth * 320);
+  const ctx = c.getContext('2d');
+  if (S.facing === 'user') { ctx.save(); ctx.translate(c.width, 0); ctx.scale(-1, 1); }
+  ctx.drawImage(v, 0, 0, c.width, c.height);
+  if (S.facing === 'user') ctx.restore();
+  return c.toDataURL('image/jpeg', 0.75).replace(/^data:[^,]+,/, '');
+}
+
+function applyAIParams(p) {
+  const cl = (v, mn, mx, d) => { const n = (v == null || isNaN(+v)) ? d : +v; return Math.max(mn, Math.min(mx, n)); };
+  const lf = p.lift || {}, gm = p.gamma || {}, gn = p.gain || {};
+  S.tgt = {
+    exposure:    cl(p.exposure,    -2,   2,    0),
+    temperature: cl(p.temperature, 2500, 10000, 5600),
+    tint:        cl(p.tint,        -50,  50,   0),
+    contrast:    cl(p.contrast,    0,    2,    1),
+    pivot:       cl(p.pivot,       0.1,  0.9,  0.5),
+    saturation:  cl(p.saturation,  0,    2,    1),
+    hue:         cl(p.hue,         -1,   1,    0),
+    liftR:  cl(lf.r,  -0.2, 0.2, 0),  liftG:  cl(lf.g,  -0.2, 0.2, 0),  liftB:  cl(lf.b,  -0.2, 0.2, 0),
+    gammaR: cl(gm.r,  -0.5, 0.5, 0),  gammaG: cl(gm.g,  -0.5, 0.5, 0),  gammaB: cl(gm.b,  -0.5, 0.5, 0),
+    gainR:  cl(gn.r,  0.5,  2.0, 1),  gainG:  cl(gn.g,  0.5,  2.0, 1),  gainB:  cl(gn.b,  0.5,  2.0, 1),
+    sharpness:   cl(p.sharpness,   0,    1,    0.5),
+    vignette:    cl(p.vignette,    0,    1,    0),
+    filmGrain:   cl(p.filmGrain,   0,    1,    0),
+    lut:         LUTS[p.lut] ? p.lut : 'natural',
+  };
+  if (p.temperature) { S.params.temperature = Math.round(S.tgt.temperature); }
+  if (p.tint) { S.params.tint = Math.round(S.tgt.tint); }
+  updateTopChips();
+}
+
+function setAIActive(on) {
+  document.getElementById('ai-dot').classList.toggle('on', on);
+  document.getElementById('ai-strip-label').classList.toggle('on', on);
+}
+
+// ─── Render loop ──────────────────────────────────────────────────────────────
+const LERP = 0.06;
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+const INTERP_KEYS = ['exposure','temperature','tint','contrast','pivot','saturation','hue',
+  'liftR','liftG','liftB','gammaR','gammaG','gammaB','gainR','gainG','gainB','sharpness','vignette','filmGrain'];
+
+function kelvinToRGB(k) {
+  const d = (5600 - k) / 5600;
+  return { r: 1 + d * 0.35, g: 1 + d * 0.05, b: 1 - d * 0.40 };
+}
+
+function startRenderLoop() {
+  S.renderRunning = true;
+  const video = document.getElementById('video');
+  const vign  = document.getElementById('vignette');
+  const grain = document.getElementById('grain');
+  const gctx  = grain.getContext('2d');
+  const fnR   = document.getElementById('fnR');
+  const fnG   = document.getElementById('fnG');
+  const fnB   = document.getElementById('fnB');
+  const ovCanvas = document.getElementById('canvas-overlay');
+  const ovCtx    = ovCanvas.getContext('2d');
+  let grainT = 0;
+
+  function frame() {
+    S.animFrame = requestAnimationFrame(frame);
+    S.frameCount++;
+    const c = S.cur, tgt = S.tgt;
+    for (const k of INTERP_KEYS) c[k] = lerp(c[k], tgt[k], LERP);
+    if (c.lut !== tgt.lut) c.lut = tgt.lut;
+
+    const lut = LUTS[c.lut] || LUTS.natural;
+    const wb  = kelvinToRGB(c.temperature);
+    const tintFactor = c.tint / 50;
+    const tR = 1 + Math.max(0, tintFactor) * 0.12;
+    const tG = 1 - Math.abs(tintFactor) * 0.08;
+    const tB = 1 + Math.max(0, tintFactor) * 0.12;
+
+    const setFn = (fn, lift, gv, gain, wbM, tM, lLift, lGain) => {
+      const amp = Math.max(0.05, gain * wbM * tM * lGain);
+      const exp = Math.max(0.15, Math.pow(2, -gv));
+      const off = lift + lLift;
+      fn.setAttribute('amplitude', amp.toFixed(4));
+      fn.setAttribute('exponent',  exp.toFixed(4));
+      fn.setAttribute('offset',    off.toFixed(4));
+    };
+    setFn(fnR, c.liftR, c.gammaR, c.gainR, wb.r, tR, lut.liftR, lut.gainR);
+    setFn(fnG, c.liftG, c.gammaG, c.gainG, wb.g, tG, lut.liftG, lut.gainG);
+    setFn(fnB, c.liftB, c.gammaB, c.gainB, wb.b, tB, lut.liftB, lut.gainB);
+
+    const brightness = Math.pow(2, c.exposure);
+    const hueDeg = c.hue * 30 + lut.hueRot;
+    video.style.filter = [
+      'url(#bmd-grade)',
+      'brightness(' + brightness.toFixed(3) + ')',
+      'contrast(' + (c.contrast * lut.contrast).toFixed(3) + ')',
+      'saturate(' + (c.saturation * lut.saturate).toFixed(3) + ')',
+      Math.abs(hueDeg) > 0.1 ? 'hue-rotate(' + hueDeg.toFixed(1) + 'deg)' : '',
+    ].filter(Boolean).join(' ');
+
+    // Vignette
+    if (c.vignette > 0.01) {
+      const stop = Math.round((1 - c.vignette * 0.5) * 100);
+      vign.style.background = 'radial-gradient(ellipse at center, transparent ' + stop + '%, rgba(0,0,0,' + (c.vignette * 0.85).toFixed(2) + ') 100%)';
+    } else { vign.style.background = 'none'; }
+
+    // Film grain
+    if (c.filmGrain > 0.01) {
+      grain.style.opacity = c.filmGrain * 0.35;
+      if (grain.width !== window.innerWidth) { grain.width = window.innerWidth; grain.height = window.innerHeight; }
+      grainT++;
+      if (grainT % 2 === 0) drawGrain(gctx, grain.width, grain.height, c.filmGrain);
+    } else { grain.style.opacity = 0; }
+
+    // Canvas overlays — resize if needed
+    if (ovCanvas.width !== ovCanvas.offsetWidth || ovCanvas.height !== ovCanvas.offsetHeight) {
+      ovCanvas.width = ovCanvas.offsetWidth || window.innerWidth;
+      ovCanvas.height = ovCanvas.offsetHeight || window.innerHeight;
+    }
+
+    const doZebra   = S.overlays.zebra   && S.frameCount % 5 === 0;
+    const doPeaking = S.overlays.peaking && S.frameCount % 5 === 0;
+    const doHist    = S.overlays.histogram && S.frameCount % 10 === 0;
+
+    if (doZebra || doPeaking) {
+      ovCtx.clearRect(0, 0, ovCanvas.width, ovCanvas.height);
+      const tmp = document.createElement('canvas');
+      tmp.width = 160; tmp.height = Math.round(video.videoHeight / video.videoWidth * 160) || 90;
+      const tc = tmp.getContext('2d');
+      if (video.videoWidth) {
+        tc.drawImage(video, 0, 0, tmp.width, tmp.height);
+        const id = tc.getImageData(0, 0, tmp.width, tmp.height);
+        if (doZebra) drawZebra(ovCtx, id, tmp.width, tmp.height, ovCanvas.width, ovCanvas.height);
+        if (doPeaking) drawPeaking(ovCtx, id, tmp.width, tmp.height, ovCanvas.width, ovCanvas.height);
+      }
+    } else if (!doZebra && !doPeaking && S.frameCount % 30 === 0) {
+      ovCtx.clearRect(0, 0, ovCanvas.width, ovCanvas.height);
+    }
+
+    if (doHist && video.videoWidth) {
+      const hc = document.getElementById('histogram-canvas');
+      const hx = hc.getContext('2d');
+      drawHistogram(hx, video, hc.width, hc.height);
+    }
+  }
+  frame();
+}
+
+function drawGrain(ctx, w, h, intensity) {
+  const d = ctx.createImageData(w, h);
+  const arr = d.data;
+  const amt = intensity * 70;
+  for (let i = 0; i < arr.length; i += 4) {
+    const n = (Math.random() - 0.5) * amt + 128;
+    arr[i] = arr[i+1] = arr[i+2] = n; arr[i+3] = 255;
+  }
+  ctx.putImageData(d, 0, 0);
+}
+
+function drawZebra(ctx, id, sw, sh, dw, dh) {
+  const sx = dw / sw, sy = dh / sh;
+  const data = id.data;
+  for (let y = 0; y < sh; y++) {
+    for (let x = 0; x < sw; x++) {
+      const i = (y * sw + x) * 4;
+      const lum = (data[i] * 0.299 + data[i+1] * 0.587 + data[i+2] * 0.114) / 255;
+      if (lum > 0.93) {
+        const dx = Math.round(x * sx), dy = Math.round(y * sy);
+        const stripe = ((dx + dy) >> 3) & 1;
+        if (stripe) {
+          ctx.fillStyle = 'rgba(255,200,0,0.7)';
+          ctx.fillRect(dx, dy, Math.ceil(sx), Math.ceil(sy));
+        }
+      }
+    }
+  }
+}
+
+function drawPeaking(ctx, id, sw, sh, dw, dh) {
+  const sx = dw / sw, sy = dh / sh;
+  const data = id.data;
+  for (let y = 1; y < sh - 1; y++) {
+    for (let x = 1; x < sw - 1; x++) {
+      const i  = (y * sw + x) * 4;
+      const ir = (y * sw + (x+1)) * 4;
+      const id2 = ((y+1) * sw + x) * 4;
+      const lum  = (data[i]  * 0.299 + data[i+1]  * 0.587 + data[i+2]  * 0.114);
+      const lumR = (data[ir] * 0.299 + data[ir+1] * 0.587 + data[ir+2] * 0.114);
+      const lumD = (data[id2]* 0.299 + data[id2+1]* 0.587 + data[id2+2]* 0.114);
+      const edgeX = Math.abs(lum - lumR);
+      const edgeY = Math.abs(lum - lumD);
+      if (edgeX > 28 || edgeY > 28) {
+        ctx.fillStyle = 'rgba(255,30,30,0.85)';
+        ctx.fillRect(Math.round(x * sx), Math.round(y * sy), 2, 2);
+      }
+    }
+  }
+}
+
+function drawHistogram(ctx, video, w, h) {
+  const tmp = document.createElement('canvas');
+  tmp.width = 80; tmp.height = 45;
+  const tc = tmp.getContext('2d');
+  tc.drawImage(video, 0, 0, 80, 45);
+  const id = tc.getImageData(0, 0, 80, 45);
+  const r = new Uint32Array(256), g = new Uint32Array(256), b = new Uint32Array(256);
+  for (let i = 0; i < id.data.length; i += 4) { r[id.data[i]]++; g[id.data[i+1]]++; b[id.data[i+2]]++; }
+  const maxV = Math.max(...r, ...g, ...b) || 1;
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.fillRect(0, 0, w, h);
+  const drawChan = (arr, color) => {
+    ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 1;
+    for (let i = 0; i < 256; i++) {
+      const x = i / 255 * w;
+      const y = h - (arr[i] / maxV) * h;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  };
+  drawChan(r, 'rgba(255,70,70,0.8)');
+  drawChan(g, 'rgba(70,220,70,0.8)');
+  drawChan(b, 'rgba(70,130,255,0.8)');
+}
+
+// ─── Manual panel ─────────────────────────────────────────────────────────────
+const TABS = ['exposure', 'whiteBalance', 'color', 'grade', 'lut'];
+
+function openManual() {
+  buildManualPanel();
+  document.getElementById('panel-manual').classList.add('show');
+}
+
+function closeManual() {
+  document.getElementById('panel-manual').classList.remove('show');
+}
+
+function buildManualPanel() {
+  // Tabs
+  const tabsEl = document.getElementById('panel-tabs');
+  tabsEl.innerHTML = '';
+  TABS.forEach(tab => {
+    const btn = document.createElement('button');
+    btn.className = 'ptab' + (tab === S.activeTab ? ' active' : '');
+    btn.textContent = t(tab);
+    btn.onclick = () => { S.activeTab = tab; buildManualPanel(); };
+    tabsEl.appendChild(btn);
+  });
+
+  // Body
+  const body = document.getElementById('panel-body');
+  body.innerHTML = '';
+
+  // AI banner in manual mode
+  if (S.mode === 'ai') {
+    const banner = document.createElement('div');
+    banner.className = 'ai-banner';
+    banner.innerHTML = '<div class="ai-banner-text">' + t('aiControlling') + '</div><button class="ai-banner-btn" onclick="disableAI()">' + t('takeManual') + '</button>';
+    body.appendChild(banner);
+  }
+
+  const disabled = S.mode === 'ai';
+
+  if (S.activeTab === 'exposure') {
+    body.appendChild(makeSlider('iso', t('iso'), 100, 6400, S.params.iso, v => { S.params.iso = Math.round(v); updateTopChips(); }, disabled, v => 'ISO ' + Math.round(v)));
+    body.appendChild(makeSlider('shutterAngle', t('shutter'), 45, 360, S.params.shutterAngle, v => { S.params.shutterAngle = Math.round(v); updateTopChips(); }, disabled, v => Math.round(v) + '°'));
+    const fpsSec = makeSection(t('frameRate'));
+    const fpsRow = document.createElement('div'); fpsRow.className = 'chip-row';
+    [24, 25, 30, 50, 60].forEach(fps => {
+      const ch = document.createElement('div');
+      ch.className = 'sel-chip' + (S.params.fps === fps ? ' active' : '');
+      ch.textContent = fps + 'fps'; if (disabled) ch.style.opacity = '0.35';
+      ch.onclick = () => { if (disabled) return; S.params.fps = fps; updateTopChips(); buildManualPanel(); };
+      fpsRow.appendChild(ch);
+    });
+    fpsSec.appendChild(fpsRow); body.appendChild(fpsSec);
+    body.appendChild(makeSlider('exposure', t('exposure'), -200, 200, S.tgt.exposure * 100,
+      v => { S.tgt.exposure = v / 100; }, disabled, v => (v >= 0 ? '+' : '') + (v/100).toFixed(2) + 'EV'));
+
+  } else if (S.activeTab === 'whiteBalance') {
+    body.appendChild(makeSlider('temperature', t('temperature'), 2500, 10000, S.tgt.temperature,
+      v => { S.tgt.temperature = v; S.params.temperature = Math.round(v); updateTopChips(); }, disabled, v => Math.round(v) + 'K'));
+    body.appendChild(makeSlider('tint', t('tint'), -50, 50, S.tgt.tint,
+      v => { S.tgt.tint = v; }, disabled, v => (v > 0 ? '+' : '') + Math.round(v)));
+
+  } else if (S.activeTab === 'color') {
+    body.appendChild(makeSlider('saturation', t('saturation'), 0, 200, S.tgt.saturation * 100,
+      v => { S.tgt.saturation = v / 100; }, disabled, v => Math.round(v) + '%'));
+    body.appendChild(makeSlider('contrast', t('contrast'), 50, 200, S.tgt.contrast * 100,
+      v => { S.tgt.contrast = v / 100; }, disabled, v => Math.round(v) + '%'));
+    body.appendChild(makeSlider('pivot', t('pivot'), 10, 90, S.tgt.pivot * 100,
+      v => { S.tgt.pivot = v / 100; }, disabled, v => (v/100).toFixed(2)));
+    body.appendChild(makeSlider('hue', t('hue'), -100, 100, S.tgt.hue * 100,
+      v => { S.tgt.hue = v / 100; }, disabled, v => (v > 0 ? '+' : '') + Math.round(v)));
+    body.appendChild(makeSlider('vignette', t('vignette'), 0, 100, S.tgt.vignette * 100,
+      v => { S.tgt.vignette = v / 100; }, disabled, v => Math.round(v) + '%'));
+    body.appendChild(makeSlider('filmGrain', t('filmGrain'), 0, 100, S.tgt.filmGrain * 100,
+      v => { S.tgt.filmGrain = v / 100; }, disabled, v => Math.round(v) + '%'));
+
+  } else if (S.activeTab === 'grade') {
+    const makeRGB = (baseKey, label) => {
+      const sec = makeSection(label);
+      ['R', 'G', 'B'].forEach(ch => {
+        const k = baseKey + ch;
+        const isGain = baseKey === 'gain';
+        const mn = isGain ? 50 : -50, mx = isGain ? 200 : 50, def = isGain ? 100 : 0;
+        const cur = isGain ? S.tgt[k] * 100 : S.tgt[k] * 100;
+        sec.appendChild(makeSlider(k, t(ch === 'R' ? 'red' : ch === 'G' ? 'green' : 'blue'), mn, mx, cur,
+          v => { S.tgt[k] = isGain ? v / 100 : v / 100; }, disabled,
+          v => isGain ? (v/100).toFixed(2) : (v > 0 ? '+' : '') + (v/100).toFixed(2)));
+      });
+      return sec;
+    };
+    body.appendChild(makeRGB('lift', t('lift')));
+    body.appendChild(makeRGB('gamma', t('gamma')));
+    body.appendChild(makeRGB('gainR', t('gain')));
+
+  } else if (S.activeTab === 'lut') {
+    const sec = makeSection('LUT');
+    const row = document.createElement('div'); row.className = 'chip-row';
+    Object.keys(LUTS).forEach(k => {
+      const ch = document.createElement('div');
+      ch.className = 'sel-chip' + (S.tgt.lut === k ? ' active' : '');
+      ch.textContent = t(k);
+      if (disabled) ch.style.opacity = '0.35';
+      ch.onclick = () => { if (disabled) return; S.tgt.lut = k; document.getElementById('ai-lut-name').textContent = t(k); buildManualPanel(); };
+      row.appendChild(ch);
+    });
+    sec.appendChild(row); body.appendChild(sec);
+  }
+}
+
+function makeSection(title) {
+  const div = document.createElement('div'); div.className = 'sl-group';
+  if (title) { const h = document.createElement('div'); h.className = 'sl-group-title'; h.textContent = title; div.appendChild(h); }
+  return div;
+}
+
+function makeSlider(id, label, min, max, val, onChange, disabled, fmt) {
+  const wrap = document.createElement('div'); wrap.className = 'sl-row';
+  const head = document.createElement('div'); head.className = 'sl-head';
+  const nm = document.createElement('div'); nm.className = 'sl-name'; nm.textContent = label;
+  const vl = document.createElement('div'); vl.className = 'sl-val'; vl.id = 'sv-' + id;
+  vl.textContent = fmt ? fmt(val) : val;
+  head.appendChild(nm); head.appendChild(vl);
+  const inp = document.createElement('input');
+  inp.type = 'range'; inp.min = min; inp.max = max; inp.value = val; inp.step = 0.1;
+  inp.disabled = disabled;
+  inp.oninput = () => { onChange(+inp.value); vl.textContent = fmt ? fmt(+inp.value) : Math.round(+inp.value); };
+  wrap.appendChild(head); wrap.appendChild(inp);
+  return wrap;
+}
+
+// Fix makeRGB for gain (gainR/gainG/gainB keys)
+// Override buildManualPanel grade section:
+function disableAI() {
+  S.mode = 'manual';
+  updateModeUI();
+  buildManualPanel();
+}
+
+function resetParams() {
+  const d = defaultParams();
+  Object.assign(S.tgt, d);
+  S.params = { iso: 800, shutterAngle: 180, fps: 24, temperature: 5600, tint: 0 };
+  updateTopChips();
+  buildManualPanel();
+}
+
+// ─── Settings ─────────────────────────────────────────────────────────────────
+function openSettings() {
+  document.getElementById('api-field').value = S.apiKey;
+  document.getElementById('panel-settings').classList.add('show');
+}
+function closeSettings() { document.getElementById('panel-settings').classList.remove('show'); }
+function saveSettings() {
+  S.apiKey = document.getElementById('api-field').value.trim();
+  localStorage.setItem('ailens_key', S.apiKey);
+  closeSettings();
+  if (S.apiKey && S.mode === 'ai') runAI();
+}
+
+// ─── Close overlays on backdrop tap ──────────────────────────────────────────
+document.getElementById('panel-manual').addEventListener('click', e => { if (e.target === document.getElementById('panel-manual')) closeManual(); });
+document.getElementById('panel-settings').addEventListener('click', e => { if (e.target === document.getElementById('panel-settings')) closeSettings(); });
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+buildLangScreen();
+
+// Check server key
+fetch('/api/config').then(r => r.json()).then(cfg => {
+  S.hasServerKey = !!cfg.hasServerKey;
+}).catch(() => {});
+
+if (S.lang) {
+  showCamera();
+} else {
+  document.getElementById('screen-lang').classList.remove('hidden');
+}
 </script>
 </body>
 </html>
