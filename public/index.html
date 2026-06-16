@@ -277,7 +277,7 @@
     <div class="sheet-title">Настройки</div>
     <div class="field-lbl">Anthropic API ключ</div>
     <input type="password" class="field" id="api-field" placeholder="sk-ant-...">
-    <div class="field-hint">Получить ключ: console.anthropic.com<br>Ключ хранится только в браузере.</div>
+    <div class="field-hint">Необязательно, если ключ задан на сервере.<br>Получить свой: console.anthropic.com — хранится только в браузере.</div>
     <button class="save-btn" onclick="saveSettings()">Сохранить</button>
   </div>
 </div>
@@ -296,6 +296,7 @@ const LUTS = {
 // ─── State ────────────────────────────────────────────────────────────────────
 const S = {
   apiKey: localStorage.getItem('ailens_key') || '',
+  hasServerKey: false,
   facing: 'environment',
   stream: null,
   isRecording: false,
@@ -423,7 +424,7 @@ function scheduleAI(delay = 30000) {
 }
 
 async function runAI() {
-  if (!S.apiKey) { scheduleAI(30000); return; }
+  if (!S.apiKey && !S.hasServerKey) { scheduleAI(30000); return; }
   const b64 = captureFrame();
   if (!b64) { scheduleAI(10000); return; }
 
@@ -620,11 +621,24 @@ function toast(msg) {
 }
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
+// Check whether the server already has a key configured (Railway env).
+fetch('/api/config')
+  .then(r => r.json())
+  .then(cfg => {
+    S.hasServerKey = !!cfg.hasServerKey;
+    // Only prompt for a key if neither server nor user has one.
+    if (!S.hasServerKey && !S.apiKey) {
+      setTimeout(() => document.getElementById('overlay').classList.add('show'), 600);
+    }
+    if (S.hasServerKey) setTimeout(runAI, 1500);
+  })
+  .catch(() => {
+    if (!S.apiKey) setTimeout(() => document.getElementById('overlay').classList.add('show'), 600);
+  });
+
 navigator.mediaDevices?.getUserMedia({ video: true, audio: true })
   .then(stream => { stream.getTracks().forEach(t => t.stop()); initCamera(); })
   .catch(() => {});
-
-if (!S.apiKey) setTimeout(() => document.getElementById('overlay').classList.add('show'), 600);
 </script>
 </body>
 </html>

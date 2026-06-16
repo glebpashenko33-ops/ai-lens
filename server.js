@@ -6,10 +6,16 @@ const app = express();
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json({ limit: '25mb' }));
 
+// ─── Config: tells the client whether a server-side key is available ─────────
+app.get('/api/config', (req, res) => {
+  res.json({ hasServerKey: !!process.env.ANTHROPIC_API_KEY });
+});
+
 // ─── Claude API proxy ────────────────────────────────────────────────────────
 app.post('/api/analyze', async (req, res) => {
   const { imageBase64 } = req.body;
-  const apiKey = req.headers['x-api-key'];
+  // Prefer server-side key (Railway env), fall back to user-provided key
+  const apiKey = process.env.ANTHROPIC_API_KEY || req.headers['x-api-key'];
 
   if (!apiKey) return res.status(401).json({ error: 'no_key' });
 
