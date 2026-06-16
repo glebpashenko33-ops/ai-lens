@@ -8,62 +8,60 @@ app.use(express.json({ limit: '25mb' }));
 
 // ─── Claude API proxy ────────────────────────────────────────────────────────
 app.post('/api/analyze', async (req, res) => {
-  const { imageBase64, mode, message } = req.body;
+  const { imageBase64 } = req.body;
   const apiKey = req.headers['x-api-key'];
 
-  if (!apiKey) return res.status(401).json({ error: 'Нет API ключа' });
+  if (!apiKey) return res.status(401).json({ error: 'no_key' });
 
   const Anthropic = require('@anthropic-ai/sdk');
   const client = new Anthropic({ apiKey });
 
-  const prompts = {
-    profile: {
-      system: 'Ты профессиональный колорист. Анализируй кадр и выбери ОДИН профиль. Смотри на: освещение (тёплое/холодное/нейтральное), время суток, место (улица/помещение), наличие людей. Отвечай ТОЛЬКО валидным JSON без пояснений: {"profile": "название"}\nДоступные профили: Дневной, Золотой час, Пасмурно, Ночной, Портрет, Кино, Помещение',
-      user: 'Выбери профиль для этого кадра.'
-    },
-    tips: {
-      system: 'Ты профессиональный фотограф-советник. Анализируй кадр и давай ОЧЕНЬ короткие, конкретные советы на русском языке.',
-      user: 'Проанализируй этот кадр с камеры. Дай 2-3 коротких совета для лучшего снимка. Будь конкретен: "Сдвинься влево", "Опусти камеру" и т.д. Верни JSON: {"tips": ["совет1", "совет2"], "score": 7, "mood": "описание атмосферы"}'
-    },
-    full: {
-      system: 'Ты профессиональный фотограф и колорист. Анализируй фото и давай детальные советы по композиции и цветокоррекции.',
-      user: `Проанализируй это фото как профессиональный фотограф. Верни JSON (только JSON, без пояснений):
-{
-  "composition": "текст обратной связи по композиции",
-  "strengths": ["сильная сторона 1", "сильная сторона 2"],
-  "improvements": ["что улучшить 1", "что улучшить 2"],
-  "colorCorrection": {
-    "brightness": 1.0,
-    "contrast": 1.0,
-    "saturation": 1.0,
-    "warmth": 0
-  },
-  "filterSuggestion": "warm|cool|vivid|natural|bw",
-  "mood": "описание настроения фото",
-  "score": 7
-}
-Для colorCorrection: brightness/contrast/saturation 0.5-2.0 (1.0 = норма), warmth от -50 до 50 (+ теплее, - холоднее).`
-    },
-    edit: {
-      system: 'Ты профессиональный ретушёр и фотошоп-мастер. Помогай редактировать фото. Отвечай на русском.',
-      user: `Запрос пользователя: "${message}". Проанализируй фото и запрос. Верни JSON:
-{
-  "response": "Дружелюбный ответ на русском — что ты сделаешь",
-  "adjustments": {
-    "brightness": 1.0,
-    "contrast": 1.0,
-    "saturation": 1.0,
-    "warmth": 0
-  },
-  "removeBackground": false,
-  "suggestion": "дополнительный совет"
-}
-Если пользователь просит убрать людей/объекты — установи removeBackground: true.`
-    }
-  };
+  const system = `Ты — автоматическая система управления профессиональной кинокамерой, аналог Blackmagic Camera.
+Твоя задача: проанализировать кадр и вернуть точные параметры обработки изображения для достижения кинематографичной картинки.
 
-  const p = prompts[mode];
-  if (!p) return res.status(400).json({ error: 'Неверный режим' });
+Анализируй: тип освещения, цветовую температуру, яркость сцены, наличие людей, время суток, интерьер/экстерьер, движение, контрастность.
+
+Верни ТОЛЬКО валидный JSON без пояснений:
+{
+  "exposure": 0.0,
+  "contrast": 1.0,
+  "saturation": 1.0,
+  "temperature": 0,
+  "tint": 0,
+  "shadows": 0.0,
+  "highlights": 0.0,
+  "blacks": 0.0,
+  "whites": 0.0,
+  "sharpness": 0.5,
+  "vignette": 0.0,
+  "filmGrain": 0.0,
+  "lut": "natural"
+}
+
+Диапазоны (как в Blackmagic Camera):
+- exposure: -2.0 до +2.0 (EV, 0 = нейтрально)
+- contrast: 0.5 до 2.0 (1.0 = нейтрально)
+- saturation: 0.0 до 2.5 (1.0 = нейтрально)
+- temperature: -100 до +100 (отрицательное = холоднее/синее, положительное = теплее/жёлтое)
+- tint: -100 до +100 (отрицательное = зелень, положительное = маджента)
+- shadows: -1.0 до +1.0 (подъём/опускание теней)
+- highlights: -1.0 до +1.0 (восстановление/усиление светов)
+- blacks: -1.0 до +1.0 (точка чёрного)
+- whites: -1.0 до +1.0 (точка белого)
+- sharpness: 0.0 до 1.0
+- vignette: 0.0 до 1.0 (0 = нет виньетки)
+- filmGrain: 0.0 до 1.0 (0 = нет зерна)
+- lut: "natural" | "film" | "cinematic" | "portrait" | "night" | "golden"
+
+Пресеты LUT:
+- natural: нейтральная обработка для хорошего освещения
+- film: киношная обработка, подъём теней, синие тени тёплые света
+- cinematic: высокий контраст, насыщенные цвета
+- portrait: мягкий свет, красивые скинтоны, тёплый
+- night: поднятые тени, шум убран, яркость поднята
+- golden: золотой час, тёплый, высокая насыщенность
+
+Принимай решение как профессиональный кинооператор. Цель — кинематографичная картинка.`;
 
   const content = [];
   if (imageBase64) {
@@ -72,22 +70,22 @@ app.post('/api/analyze', async (req, res) => {
       source: { type: 'base64', media_type: 'image/jpeg', data: imageBase64 }
     });
   }
-  content.push({ type: 'text', text: p.user });
+  content.push({ type: 'text', text: 'Проанализируй кадр и верни параметры камеры.' });
 
   try {
     const msg = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 700,
-      system: p.system,
+      max_tokens: 400,
+      system,
       messages: [{ role: 'user', content }]
     });
 
     const text = msg.content[0].text;
-    const match = text.match(/\{[\s\S]*\}/);
+    const match = text.match(/\{[\s\S]*?\}/);
     if (match) {
       res.json(JSON.parse(match[0]));
     } else {
-      res.json({ response: text });
+      res.status(422).json({ error: 'parse_error' });
     }
   } catch (err) {
     console.error('Claude error:', err.message);
@@ -95,21 +93,16 @@ app.post('/api/analyze', async (req, res) => {
   }
 });
 
-// ─── Start server ────────────────────────────────────────────────────────────
+// ─── Start ───────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {
-  console.log('\n🎵  AI Camera — умная камера с ИИ\n');
-  console.log(`💻  Компьютер:   http://localhost:${PORT}`);
-
+  console.log(`AI Lens running on port ${PORT}`);
   const nets = os.networkInterfaces();
   for (const name of Object.keys(nets)) {
     for (const net of nets[name]) {
       if (net.family === 'IPv4' && !net.internal) {
-        console.log(`📱  Телефон (WiFi): http://${net.address}:${PORT}`);
+        console.log(`Local network: http://${net.address}:${PORT}`);
       }
     }
   }
-
-  console.log('\n⚠️   Для камеры на iPhone нужен HTTPS. На Android работает по HTTP.');
-  console.log('📖  Инструкция: см. README.md\n');
 });
