@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -9,227 +9,162 @@
   <title>AI Lens</title>
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; overflow: hidden; background: #000; color: #fff; font-family: -apple-system, 'SF Pro Display', system-ui, sans-serif; user-select: none; -webkit-user-select: none; }
+    .hidden { display: none !important; }
+    .screen { position: fixed; inset: 0; }
 
-    html, body { height: 100%; overflow: hidden; background: #000; user-select: none; -webkit-user-select: none; }
+    /* ── Language screen ── */
+    #screen-lang { background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; gap: 28px; overflow-y: auto; }
+    .lang-title { font-size: 38px; font-style: italic; font-weight: 200; color: rgba(255,255,255,0.9); letter-spacing: 2px; }
+    .lang-subtitle { font-size: 13px; color: rgba(255,255,255,0.35); letter-spacing: 1.5px; text-transform: uppercase; }
+    .lang-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; width: 100%; max-width: 380px; }
+    .lang-card { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 14px 8px; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; transition: background 0.2s, border-color 0.2s; }
+    .lang-card:active { background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.3); }
+    .lang-flag { font-size: 26px; line-height: 1; }
+    .lang-name { font-size: 11px; color: rgba(255,255,255,0.65); text-align: center; font-weight: 400; line-height: 1.3; }
 
-    /* ─── Camera layer ─── */
-    #app { position: fixed; inset: 0; }
+    /* ── Camera screen ── */
+    #screen-camera { background: #000; }
+    #video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    #canvas-overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; }
+    #vignette { position: absolute; inset: 0; pointer-events: none; z-index: 4; }
+    #grain { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 4; opacity: 0; mix-blend-mode: overlay; }
 
-    #video {
-      position: absolute; inset: 0; width: 100%; height: 100%;
-      object-fit: cover; background: #000;
-    }
+    #grid-overlay { position: absolute; inset: 0; z-index: 5; pointer-events: none; }
+    .g-line { position: absolute; background: rgba(255,255,255,0.22); }
+    .g-h { left: 0; right: 0; height: 1px; }
+    .g-v { top: 0; bottom: 0; width: 1px; }
 
-    /* Canvas for real-time LUT/grain rendering */
-    #fx-canvas {
-      position: absolute; inset: 0; width: 100%; height: 100%;
-      pointer-events: none; opacity: 0;
-      transition: opacity 0.8s ease;
-    }
-    #fx-canvas.active { opacity: 1; }
+    .top-fade { position: absolute; top: 0; left: 0; right: 0; height: 170px; background: linear-gradient(to bottom,rgba(0,0,0,0.65) 0%,transparent 100%); pointer-events: none; z-index: 6; }
+    .bottom-fade { position: absolute; bottom: 0; left: 0; right: 0; height: 260px; background: linear-gradient(to top,rgba(0,0,0,0.72) 0%,transparent 100%); pointer-events: none; z-index: 6; }
 
-    /* Vignette overlay */
-    #vignette {
-      position: absolute; inset: 0; pointer-events: none;
-      background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0) 100%);
-      transition: background 1.2s ease;
-      z-index: 2;
-    }
+    /* ── Top bar ── */
+    #top-bar { position: absolute; top: 0; left: 0; right: 0; padding: calc(env(safe-area-inset-top,14px) + 10px) 16px 0; display: flex; align-items: center; justify-content: space-between; z-index: 10; }
+    .status-chips { display: flex; gap: 5px; flex-wrap: wrap; }
+    .chip { background: rgba(0,0,0,0.38); border: 1px solid rgba(255,255,255,0.14); border-radius: 6px; padding: 3px 7px; font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.75); letter-spacing: 0.3px; font-variant-numeric: tabular-nums; backdrop-filter: blur(8px); }
+    .top-title { font-size: 17px; font-style: italic; font-weight: 200; color: rgba(255,255,255,0.65); letter-spacing: 1.5px; position: absolute; left: 50%; transform: translateX(-50%); }
+    .top-btn { width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.7); font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(20px); transition: background 0.2s; }
+    .top-btn:active { background: rgba(255,255,255,0.22); }
 
-    /* Film grain overlay */
-    #grain {
-      position: absolute; inset: 0; pointer-events: none; z-index: 3;
-      opacity: 0; mix-blend-mode: overlay;
-    }
+    /* ── AI strip ── */
+    #ai-strip { position: absolute; top: calc(env(safe-area-inset-top,14px) + 54px); left: 0; right: 0; padding: 2px 18px; display: flex; align-items: center; justify-content: space-between; z-index: 10; }
+    .ai-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.2); transition: background 0.4s, box-shadow 0.4s; flex-shrink: 0; }
+    .ai-dot.on { background: #30d158; box-shadow: 0 0 7px #30d158; animation: blink 1.4s ease-in-out infinite; }
+    .ai-strip-left { display: flex; align-items: center; gap: 7px; }
+    .ai-strip-label { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.25); letter-spacing: 1.2px; transition: color 0.4s; }
+    .ai-strip-label.on { color: rgba(255,255,255,0.65); }
+    #ai-lut-name { font-size: 10px; color: rgba(255,255,255,0.28); letter-spacing: 0.5px; }
 
-    /* ─── UI overlay ─── */
-    .ui {
-      position: absolute; inset: 0; z-index: 10;
-      display: flex; flex-direction: column; justify-content: flex-end;
-      pointer-events: none;
-    }
+    /* ── REC badge ── */
+    #rec-badge { position: absolute; top: calc(env(safe-area-inset-top,14px) + 10px); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; z-index: 11; }
+    .rec-dot { width: 7px; height: 7px; border-radius: 50%; background: #ff3b30; animation: blink 1s ease-in-out infinite; }
+    .rec-tc { font-size: 13px; font-weight: 600; color: #fff; font-variant-numeric: tabular-nums; letter-spacing: 1px; }
 
-    /* Bottom fade */
-    .bottom-fade {
-      position: absolute; bottom: 0; left: 0; right: 0; height: 200px;
-      background: linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 100%);
-      pointer-events: none;
-    }
+    /* ── Histogram ── */
+    #histogram-widget { position: absolute; left: 12px; bottom: calc(env(safe-area-inset-bottom,24px) + 210px); background: rgba(0,0,0,0.58); border-radius: 8px; overflow: hidden; z-index: 9; display: none; border: 1px solid rgba(255,255,255,0.08); }
+    #histogram-widget.show { display: block; }
 
-    /* AI status — top left, barely visible */
-    .ai-status {
-      position: absolute;
-      top: calc(env(safe-area-inset-top, 12px) + 16px);
-      left: 20px;
-      display: flex; align-items: center; gap: 7px;
-      pointer-events: none;
-    }
-    .ai-dot {
-      width: 6px; height: 6px; border-radius: 50%;
-      background: rgba(255,255,255,0.2);
-      transition: background 0.4s, box-shadow 0.4s;
-    }
-    .ai-dot.on { background: #30d158; box-shadow: 0 0 6px #30d158; animation: blink 1.4s ease-in-out infinite; }
-    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
-    .ai-label {
-      font-family: -apple-system, system-ui, sans-serif;
-      font-size: 11px; font-weight: 300;
-      color: rgba(255,255,255,0.25);
-      letter-spacing: 1px;
-      transition: color 0.4s;
-    }
-    .ai-label.on { color: rgba(255,255,255,0.5); }
+    /* ── Bottom area ── */
+    #bottom-area { position: absolute; bottom: 0; left: 0; right: 0; z-index: 10; padding-bottom: calc(env(safe-area-inset-bottom,24px) + 10px); }
+    #ai-progress-track { height: 1.5px; background: rgba(255,255,255,0.1); }
+    #ai-progress-fill { height: 100%; background: rgba(255,255,255,0.38); transition: width 0.3s linear; width: 0%; }
 
-    /* Settings button — top right */
-    .settings-btn {
-      position: absolute;
-      top: calc(env(safe-area-inset-top, 12px) + 10px);
-      right: 16px;
-      width: 36px; height: 36px; border-radius: 50%;
-      background: rgba(0,0,0,0.25); border: none;
-      color: rgba(255,255,255,0.5); font-size: 15px; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      pointer-events: auto; backdrop-filter: blur(10px);
-      transition: background 0.2s;
-    }
-    .settings-btn:active { background: rgba(255,255,255,0.15); }
+    #controls-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 28px 0; }
+    .overlay-toggles { display: flex; flex-direction: column; gap: 5px; }
+    .toggle-row { display: flex; gap: 5px; }
+    .ov-btn { width: 30px; height: 30px; border-radius: 8px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.45); font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.18s; }
+    .ov-btn.active { background: rgba(255,255,255,0.85); color: #000; border-color: transparent; }
 
-    /* REC timer */
-    .rec-timer {
-      position: absolute;
-      top: calc(env(safe-area-inset-top, 12px) + 18px);
-      left: 50%; transform: translateX(-50%);
-      display: flex; align-items: center; gap: 7px;
-      opacity: 0; transition: opacity 0.3s; pointer-events: none;
-    }
-    .rec-timer.show { opacity: 1; }
-    .rec-dot { width: 7px; height: 7px; border-radius: 50%; background: #ff3b30; animation: blink 1s infinite; }
-    .rec-time {
-      font-family: -apple-system, system-ui, sans-serif;
-      font-size: 14px; font-weight: 500; color: #fff;
-      font-variant-numeric: tabular-nums;
-    }
-
-    /* Controls */
-    .controls {
-      display: flex; align-items: center; justify-content: center;
-      gap: 52px;
-      padding-bottom: calc(env(safe-area-inset-bottom, 28px) + 32px);
-      padding-top: 14px;
-      pointer-events: auto; position: relative;
-    }
-
-    /* Record button */
-    .rec-btn {
-      width: 58px; height: 58px; border-radius: 50%;
-      position: relative; cursor: pointer; flex-shrink: 0;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .rec-ring {
-      position: absolute; inset: 0; border-radius: 50%;
-      border: 2.5px solid rgba(255,255,255,0.9);
-    }
-    .rec-inner {
-      position: absolute; inset: 6px; border-radius: 50%;
-      background: #ff3b30;
-      transition: border-radius 0.22s cubic-bezier(.4,0,.2,1),
-                  inset 0.22s cubic-bezier(.4,0,.2,1);
-    }
-    .rec-btn.recording .rec-inner {
-      inset: 16px; border-radius: 4px;
-    }
+    .rec-btn { width: 58px; height: 58px; border-radius: 50%; position: relative; cursor: pointer; flex-shrink: 0; }
+    .rec-ring { position: absolute; inset: 0; border-radius: 50%; border: 2.5px solid rgba(255,255,255,0.85); }
+    .rec-inner { position: absolute; inset: 6px; border-radius: 50%; background: #ff3b30; transition: border-radius 0.22s cubic-bezier(.4,0,.2,1), inset 0.22s cubic-bezier(.4,0,.2,1); }
+    .rec-btn.recording .rec-inner { inset: 16px; border-radius: 4px; }
     .rec-btn.recording { animation: pulse-rec 1.1s ease-in-out infinite; }
-    @keyframes pulse-rec { 0%,100%{transform:scale(1)} 50%{transform:scale(1.07)} }
 
-    /* Flip button */
-    .flip-btn {
-      width: 44px; height: 44px; border-radius: 50%;
-      background: rgba(255,255,255,0.12);
-      border: 1px solid rgba(255,255,255,0.18);
-      color: #fff; font-size: 19px; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      line-height: 1;
-      backdrop-filter: blur(20px);
-      transition: transform 0.38s cubic-bezier(.4,0,.2,1), background 0.2s;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .flip-btn:active { background: rgba(255,255,255,0.25); }
+    .flip-btn { width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(20px); transition: transform 0.38s cubic-bezier(.4,0,.2,1), background 0.2s; }
+    .flip-btn:active { background: rgba(255,255,255,0.22); }
     .flip-btn.spinning { transform: rotate(180deg); }
 
-    /* Toast */
-    .toast {
-      position: absolute;
-      bottom: calc(env(safe-area-inset-bottom, 28px) + 120px);
-      left: 50%; transform: translateX(-50%) translateY(10px);
-      background: rgba(0,0,0,0.7); backdrop-filter: blur(16px);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 22px; padding: 9px 20px;
-      font-family: -apple-system, system-ui, sans-serif;
-      font-size: 13px; font-weight: 400; color: rgba(255,255,255,0.9);
-      opacity: 0; transition: opacity 0.25s, transform 0.25s;
-      pointer-events: none; white-space: nowrap; z-index: 20;
-    }
-    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #mode-row { display: flex; align-items: center; gap: 10px; padding: 10px 28px 0; }
+    .mode-btn { flex: 1; height: 36px; border-radius: 10px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.6); font-size: 11px; font-weight: 700; letter-spacing: 0.8px; cursor: pointer; backdrop-filter: blur(20px); transition: all 0.2s; font-family: inherit; }
+    .mode-btn:active { opacity: 0.75; }
+    #ai-mode-btn { color: rgba(255,255,255,0.35); }
+    #ai-mode-btn.active { background: rgba(48,209,88,0.14); border-color: rgba(48,209,88,0.4); color: #30d158; box-shadow: 0 0 14px rgba(48,209,88,0.12); }
 
-    /* Permission screen */
-    #perm {
-      position: fixed; inset: 0; background: #000;
-      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
-      z-index: 100; font-family: -apple-system, system-ui, sans-serif;
-    }
-    #perm.hidden { display: none; }
-    #perm p { color: rgba(255,255,255,0.75); font-size: 17px; font-weight: 300; }
-    #perm button {
-      background: #fff; border: none; border-radius: 14px;
-      padding: 13px 36px; font-size: 16px; font-weight: 600;
-      color: #000; cursor: pointer; font-family: inherit;
-    }
+    /* ── Toast ── */
+    #toast { position: absolute; bottom: calc(env(safe-area-inset-bottom,24px) + 140px); left: 50%; transform: translateX(-50%) translateY(10px); background: rgba(0,0,0,0.72); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.1); border-radius: 22px; padding: 9px 20px; font-size: 13px; color: rgba(255,255,255,0.9); opacity: 0; transition: opacity 0.25s, transform 0.25s; pointer-events: none; white-space: nowrap; z-index: 20; }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-    /* Settings sheet */
-    .overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.55);
-      backdrop-filter: blur(12px); z-index: 50;
-      display: flex; align-items: flex-end;
-      opacity: 0; transition: opacity 0.28s; pointer-events: none;
-    }
-    .overlay.show { opacity: 1; pointer-events: auto; }
-    .sheet {
-      width: 100%; background: #161616;
-      border-radius: 22px 22px 0 0;
-      border-top: 1px solid rgba(255,255,255,0.07);
-      padding: 22px 20px calc(env(safe-area-inset-bottom, 20px) + 22px);
-      transform: translateY(100%); transition: transform 0.32s cubic-bezier(.4,0,.2,1);
-      font-family: -apple-system, system-ui, sans-serif;
-    }
-    .overlay.show .sheet { transform: translateY(0); }
-    .sheet-handle { width: 34px; height: 3px; border-radius: 2px; background: rgba(255,255,255,0.15); margin: 0 auto 22px; }
-    .sheet-title { font-size: 20px; font-weight: 200; font-style: italic; color: #fff; margin-bottom: 22px; letter-spacing: 0.3px; }
-    .field-lbl { font-size: 11px; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 9px; }
-    .field {
-      width: 100%; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.09);
-      border-radius: 11px; padding: 13px 15px; font-size: 15px; color: #fff;
-      outline: none; font-family: inherit; margin-bottom: 8px; transition: border-color 0.2s;
-    }
-    .field:focus { border-color: rgba(255,255,255,0.25); }
+    /* ── Overlay panels ── */
+    .overlay-panel { position: fixed; inset: 0; background: rgba(0,0,0,0.55); backdrop-filter: blur(12px); z-index: 50; display: flex; align-items: flex-end; opacity: 0; transition: opacity 0.28s; pointer-events: none; }
+    .overlay-panel.show { opacity: 1; pointer-events: auto; }
+    .sheet { width: 100%; background: #141414; border-radius: 22px 22px 0 0; border-top: 1px solid rgba(255,255,255,0.07); transform: translateY(100%); transition: transform 0.32s cubic-bezier(.4,0,.2,1); max-height: 82vh; display: flex; flex-direction: column; }
+    .overlay-panel.show .sheet { transform: translateY(0); }
+    .sheet-handle { width: 34px; height: 3px; border-radius: 2px; background: rgba(255,255,255,0.15); margin: 14px auto 0; flex-shrink: 0; }
+    .sheet-header { padding: 14px 20px 0; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; }
+    .sheet-title { font-size: 20px; font-weight: 200; font-style: italic; color: #fff; }
+    .sheet-close { width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,0.1); border: none; color: rgba(255,255,255,0.5); font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+    /* Manual panel tabs */
+    .panel-tabs { display: flex; gap: 0; padding: 12px 16px 0; overflow-x: auto; scrollbar-width: none; flex-shrink: 0; }
+    .panel-tabs::-webkit-scrollbar { display: none; }
+    .ptab { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.38); cursor: pointer; white-space: nowrap; border: none; background: none; font-family: inherit; transition: all 0.18s; }
+    .ptab.active { background: rgba(255,255,255,0.9); color: #000; }
+
+    .panel-body { flex: 1; overflow-y: auto; padding: 14px 20px 0; scrollbar-width: none; }
+    .panel-body::-webkit-scrollbar { display: none; }
+
+    /* AI banner inside manual panel */
+    .ai-banner { background: rgba(48,209,88,0.07); border: 1px solid rgba(48,209,88,0.2); border-radius: 12px; padding: 11px 14px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .ai-banner-text { font-size: 12px; color: rgba(255,255,255,0.55); }
+    .ai-banner-btn { padding: 7px 13px; border-radius: 8px; background: #30d158; border: none; color: #000; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap; flex-shrink: 0; }
+
+    /* Sliders */
+    .sl-group { margin-bottom: 18px; }
+    .sl-group-title { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.28); text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 10px; }
+    .sl-row { margin-bottom: 12px; }
+    .sl-head { display: flex; justify-content: space-between; margin-bottom: 5px; }
+    .sl-name { font-size: 12px; color: rgba(255,255,255,0.55); }
+    .sl-val { font-size: 12px; font-weight: 600; color: #fff; font-variant-numeric: tabular-nums; min-width: 48px; text-align: right; }
+    input[type=range] { width: 100%; height: 3px; border-radius: 2px; background: rgba(255,255,255,0.14); outline: none; -webkit-appearance: none; appearance: none; cursor: pointer; }
+    input[type=range]:disabled { opacity: 0.35; cursor: not-allowed; }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #fff; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.5); }
+
+    /* FPS & LUT chips */
+    .chip-row { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 4px; }
+    .sel-chip { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.45); background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1); cursor: pointer; transition: all 0.18s; }
+    .sel-chip.active { background: rgba(255,255,255,0.88); color: #000; border-color: transparent; }
+    .sel-chip:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    /* Panel footer */
+    .panel-footer { padding: 12px 20px calc(env(safe-area-inset-bottom,20px) + 12px); display: flex; gap: 10px; flex-shrink: 0; border-top: 1px solid rgba(255,255,255,0.06); }
+    .footer-btn { flex: 1; height: 44px; border-radius: 12px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: opacity 0.15s; }
+    .footer-btn:active { opacity: 0.72; }
+    .btn-ghost { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.65); border: 1px solid rgba(255,255,255,0.1); }
+    .btn-ai { background: #30d158; color: #000; }
+
+    /* Settings panel */
+    .settings-body { padding: 18px 20px; flex: 1; overflow-y: auto; }
+    .field-lbl { font-size: 11px; color: rgba(255,255,255,0.32); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+    .field { width: 100%; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 13px 15px; font-size: 15px; color: #fff; outline: none; font-family: inherit; margin-bottom: 8px; transition: border-color 0.2s; }
+    .field:focus { border-color: rgba(255,255,255,0.28); }
     .field::placeholder { color: rgba(255,255,255,0.2); }
-    .field-hint { font-size: 11px; color: rgba(255,255,255,0.25); margin-bottom: 22px; line-height: 1.5; }
-    .save-btn {
-      width: 100%; padding: 14px; background: #fff; border: none; border-radius: 13px;
-      font-size: 15px; font-weight: 600; color: #000; cursor: pointer; font-family: inherit;
-      transition: opacity 0.15s;
-    }
+    .field-hint { font-size: 11px; color: rgba(255,255,255,0.22); margin-bottom: 22px; line-height: 1.5; }
+    .save-btn { width: 100%; padding: 14px; background: #fff; border: none; border-radius: 13px; font-size: 15px; font-weight: 600; color: #000; cursor: pointer; font-family: inherit; }
     .save-btn:active { opacity: 0.8; }
+
+    /* Perm screen */
+    #screen-perm { background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; }
+    #screen-perm p { color: rgba(255,255,255,0.72); font-size: 17px; font-weight: 300; text-align: center; padding: 0 32px; }
+    #screen-perm button { background: #fff; border: none; border-radius: 14px; padding: 13px 36px; font-size: 16px; font-weight: 600; color: #000; cursor: pointer; font-family: inherit; }
+
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.25} }
+    @keyframes pulse-rec { 0%,100%{transform:scale(1)} 50%{transform:scale(1.07)} }
   </style>
 </head>
 <body>
 
-<div id="perm">
-  <p>Нужен доступ к камере</p>
-  <button onclick="initCamera()">Разрешить</button>
-</div>
-
-<!-- Per-channel Lift/Gamma/Gain color corrector (Blackmagic/Resolve Primaries model).
-     feFunc: output = amplitude * input^exponent + offset  →  amplitude=Gain, exponent~Gamma, offset=Lift -->
+<!-- SVG color grading filter — Blackmagic-style Lift/Gamma/Gain per channel -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <filter id="bmd-grade" color-interpolation-filters="sRGB">
     <feComponentTransfer>
@@ -240,36 +175,93 @@
   </filter>
 </svg>
 
-<div id="app">
+<!-- SCREEN: Language picker -->
+<div id="screen-lang" class="screen">
+  <div class="lang-title">AI Lens</div>
+  <div class="lang-subtitle" id="lang-prompt">Choose your language</div>
+  <div class="lang-grid" id="lang-grid"></div>
+</div>
+
+<!-- SCREEN: Permission -->
+<div id="screen-perm" class="screen hidden">
+  <p id="perm-text">Camera access required</p>
+  <button onclick="initCamera()">Allow</button>
+</div>
+
+<!-- SCREEN: Camera -->
+<div id="screen-camera" class="screen hidden">
   <video id="video" autoplay playsinline muted></video>
-  <canvas id="fx-canvas"></canvas>
+  <canvas id="canvas-overlay"></canvas>
   <div id="vignette"></div>
   <canvas id="grain"></canvas>
 
-  <div class="ui">
-    <div class="bottom-fade"></div>
+  <!-- Grid overlay -->
+  <div id="grid-overlay" class="hidden">
+    <div class="g-line g-h" style="top:33.33%"></div>
+    <div class="g-line g-h" style="top:66.66%"></div>
+    <div class="g-line g-v" style="left:33.33%"></div>
+    <div class="g-line g-v" style="left:66.66%"></div>
+  </div>
 
-    <!-- AI status -->
-    <div class="ai-status">
+  <div class="top-fade"></div>
+  <div class="bottom-fade"></div>
+
+  <!-- Histogram widget -->
+  <div id="histogram-widget">
+    <canvas id="histogram-canvas" width="120" height="54"></canvas>
+  </div>
+
+  <!-- Top bar -->
+  <div id="top-bar">
+    <div class="status-chips">
+      <div class="chip" id="chip-wb">5600K</div>
+      <div class="chip" id="chip-iso">ISO 800</div>
+      <div class="chip" id="chip-sh">180°</div>
+      <div class="chip" id="chip-fps">24fps</div>
+    </div>
+    <div class="top-title">AI Lens</div>
+    <button class="top-btn" onclick="openSettings()">⚙</button>
+  </div>
+
+  <!-- AI status strip -->
+  <div id="ai-strip">
+    <div class="ai-strip-left">
       <div class="ai-dot" id="ai-dot"></div>
-      <div class="ai-label" id="ai-label">AI LENS</div>
+      <div class="ai-strip-label" id="ai-strip-label">AI</div>
     </div>
+    <div id="ai-lut-name">Natural</div>
+  </div>
 
-    <!-- Settings -->
-    <button class="settings-btn" id="settings-btn">⚙</button>
+  <!-- REC badge -->
+  <div id="rec-badge" class="hidden">
+    <div class="rec-dot"></div>
+    <div class="rec-tc" id="rec-tc">00:00:00:00</div>
+  </div>
 
-    <!-- REC timer -->
-    <div class="rec-timer" id="rec-timer">
-      <div class="rec-dot"></div>
-      <div class="rec-time" id="rec-time">0:00</div>
-    </div>
+  <!-- Bottom area -->
+  <div id="bottom-area">
+    <div id="ai-progress-track"><div id="ai-progress-fill"></div></div>
 
-    <!-- Controls -->
-    <div class="controls">
+    <div id="controls-row">
+      <!-- Overlay toggles -->
+      <div class="overlay-toggles">
+        <div class="toggle-row">
+          <button class="ov-btn" id="btn-grid" onclick="toggleOverlay('grid')" title="Grid">⊞</button>
+          <button class="ov-btn" id="btn-zebra" onclick="toggleOverlay('zebra')" title="Zebra">◨</button>
+        </div>
+        <div class="toggle-row">
+          <button class="ov-btn" id="btn-peaking" onclick="toggleOverlay('peaking')" title="Peaking">◈</button>
+          <button class="ov-btn" id="btn-histogram" onclick="toggleOverlay('histogram')" title="Histogram">▦</button>
+        </div>
+      </div>
+
+      <!-- Record button -->
       <div class="rec-btn" id="rec-btn" onclick="toggleRecord()">
         <div class="rec-ring"></div>
         <div class="rec-inner"></div>
       </div>
+
+      <!-- Flip camera -->
       <button class="flip-btn" id="flip-btn" onclick="flipCamera()">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M1 4v6h6"/><path d="M23 20v-6h-6"/>
@@ -277,42 +269,108 @@
         </svg>
       </button>
     </div>
+
+    <div id="mode-row">
+      <button class="mode-btn" id="manual-btn" onclick="openManual()" data-t="manual">MANUAL</button>
+      <button class="mode-btn" id="ai-mode-btn" onclick="toggleAIMode()" data-t="aiAuto">AI AUTO</button>
+    </div>
   </div>
 
-  <div class="toast" id="toast"></div>
+  <div id="toast"></div>
 </div>
 
-<!-- Settings sheet -->
-<div class="overlay" id="overlay">
+<!-- PANEL: Manual controls -->
+<div class="overlay-panel hidden" id="panel-manual">
   <div class="sheet">
     <div class="sheet-handle"></div>
-    <div class="sheet-title">Настройки</div>
-    <div class="field-lbl">Anthropic API ключ</div>
-    <input type="password" class="field" id="api-field" placeholder="sk-ant-...">
-    <div class="field-hint">Необязательно, если ключ задан на сервере.<br>Получить свой: console.anthropic.com — хранится только в браузере.</div>
-    <button class="save-btn" onclick="saveSettings()">Сохранить</button>
+    <div class="sheet-header">
+      <div class="sheet-title" data-t="manual">Manual</div>
+      <button class="sheet-close" onclick="closeManual()">✕</button>
+    </div>
+    <div class="panel-tabs" id="panel-tabs"></div>
+    <div class="panel-body" id="panel-body"></div>
+    <div class="panel-footer">
+      <button class="footer-btn btn-ghost" onclick="resetParams()" data-t="reset">Reset</button>
+      <button class="footer-btn btn-ai" onclick="enableAI()" data-t="letAI">Let AI take over</button>
+    </div>
+  </div>
+</div>
+
+<!-- PANEL: Settings -->
+<div class="overlay-panel hidden" id="panel-settings">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div class="sheet-title" data-t="settings">Settings</div>
+      <button class="sheet-close" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="settings-body">
+      <div class="field-lbl" data-t="apiKey">Anthropic API Key</div>
+      <input type="password" class="field" id="api-field" placeholder="sk-ant-...">
+      <div class="field-hint" data-t="apiHint">Get key: console.anthropic.com — stored only in your browser.</div>
+      <button class="save-btn" onclick="saveSettings()" data-t="save">Save</button>
+    </div>
   </div>
 </div>
 
 <script>
-// ─── LUT presets — base cinematic grade layered under the AI's per-shot params.
-// liftR/G/B = shadow tint (offset), gainR/G/B = highlight tint (multiplier),
-// contrast/saturate/hueRot = global tone. "teal&orange" = cool lifts + warm gains.
-const LUTS = {
-  natural:   { liftR: 0,     liftG: 0,     liftB: 0,     gainR: 1,    gainG: 1,    gainB: 1,    contrast: 1.0,  saturate: 1.0,  hueRot: 0 },
-  film:      { liftR: -0.01, liftG: 0,     liftB: 0.02,  gainR: 1.04, gainG: 1.0,  gainB: 0.97, contrast: 0.95, saturate: 0.9,  hueRot: -2 },
-  cinematic: { liftR: -0.02, liftG: 0,     liftB: 0.03,  gainR: 1.08, gainG: 1.0,  gainB: 0.94, contrast: 1.15, saturate: 1.2,  hueRot: -4 },
-  portrait:  { liftR: 0.01,  liftG: 0.005, liftB: 0,     gainR: 1.05, gainG: 1.0,  gainB: 0.98, contrast: 0.98, saturate: 1.08, hueRot: 2 },
-  night:     { liftR: 0,     liftG: 0.01,  liftB: 0.03,  gainR: 1.0,  gainG: 1.0,  gainB: 1.02, contrast: 1.05, saturate: 0.8,  hueRot: 4 },
-  golden:    { liftR: 0.02,  liftG: 0,     liftB: -0.01, gainR: 1.12, gainG: 1.02, gainB: 0.9,  contrast: 1.05, saturate: 1.25, hueRot: 6 },
+// ─── Translations ─────────────────────────────────────────────────────────────
+const T = {
+  en: { chooseLanguage:'Choose your language', aiAuto:'AI AUTO', aiOff:'AI OFF', aiControlling:'AI is controlling', takeManual:'Take manual control', letAI:'Let AI take over', manual:'MANUAL', settings:'Settings', save:'Save', reset:'Reset', exposure:'Exposure', whiteBalance:'White Balance', color:'Color', grade:'Grade', lut:'LUT', iso:'ISO', shutter:'Shutter', frameRate:'Frame Rate', temperature:'Temperature', tint:'Tint', saturation:'Saturation', contrast:'Contrast', pivot:'Pivot', lift:'Lift', gamma:'Gamma', gain:'Gain', natural:'Natural', film:'Film', cinematic:'Cinematic', portrait:'Portrait', night:'Night', golden:'Golden', videoSaved:'✓ Video saved', camUnavailable:'Camera unavailable', apiKey:'Anthropic API Key', apiHint:'Get key: console.anthropic.com', vignette:'Vignette', filmGrain:'Film Grain', hue:'Hue', red:'R', green:'G', blue:'B' },
+  ru: { chooseLanguage:'Выберите язык', aiAuto:'ИИ АВТО', aiOff:'ИИ ВЫКЛ', aiControlling:'ИИ управляет', takeManual:'Взять управление', letAI:'Доверить ИИ', manual:'РУЧНОЙ', settings:'Настройки', save:'Сохранить', reset:'Сбросить', exposure:'Экспозиция', whiteBalance:'Баланс белого', color:'Цвет', grade:'Грейдинг', lut:'LUT', iso:'ISO', shutter:'Затвор', frameRate:'Частота кадров', temperature:'Температура', tint:'Оттенок', saturation:'Насыщенность', contrast:'Контраст', pivot:'Опора', lift:'Лифт', gamma:'Гамма', gain:'Гейн', natural:'Нейтральный', film:'Плёнка', cinematic:'Кино', portrait:'Портрет', night:'Ночь', golden:'Золотой', videoSaved:'✓ Видео сохранено', camUnavailable:'Камера недоступна', apiKey:'Ключ Anthropic API', apiHint:'Получить: console.anthropic.com', vignette:'Виньетка', filmGrain:'Зерно', hue:'Тон', red:'К', green:'З', blue:'С' },
+  de: { chooseLanguage:'Sprache wählen', aiAuto:'KI AUTO', aiOff:'KI AUS', aiControlling:'KI steuert', takeManual:'Manuell', letAI:'KI überlassen', manual:'MANUELL', settings:'Einstellungen', save:'Speichern', reset:'Zurücksetzen', exposure:'Belichtung', whiteBalance:'Weißabgleich', color:'Farbe', grade:'Grading', lut:'LUT', iso:'ISO', shutter:'Verschluss', frameRate:'Bildrate', temperature:'Temperatur', tint:'Tönung', saturation:'Sättigung', contrast:'Kontrast', pivot:'Pivot', lift:'Lift', gamma:'Gamma', gain:'Gain', natural:'Natürlich', film:'Film', cinematic:'Kino', portrait:'Porträt', night:'Nacht', golden:'Golden', videoSaved:'✓ Video gespeichert', camUnavailable:'Kamera nicht verfügbar', apiKey:'Anthropic API-Schlüssel', apiHint:'Schlüssel: console.anthropic.com', vignette:'Vignette', filmGrain:'Filmkorn', hue:'Farbton', red:'R', green:'G', blue:'B' },
+  fr: { chooseLanguage:'Choisissez votre langue', aiAuto:'IA AUTO', aiOff:'IA OFF', aiControlling:"L'IA contrôle", takeManual:'Contrôle manuel', letAI:"Laisser l'IA", manual:'MANUEL', settings:'Paramètres', save:'Enregistrer', reset:'Réinitialiser', exposure:'Exposition', whiteBalance:'Balance des blancs', color:'Couleur', grade:'Étalonnage', lut:'LUT', iso:'ISO', shutter:'Obturateur', frameRate:'Fréq. images', temperature:'Température', tint:'Teinte', saturation:'Saturation', contrast:'Contraste', pivot:'Pivot', lift:'Lift', gamma:'Gamma', gain:'Gain', natural:'Naturel', film:'Film', cinematic:'Cinéma', portrait:'Portrait', night:'Nuit', golden:'Doré', videoSaved:'✓ Vidéo sauvegardée', camUnavailable:'Caméra indisponible', apiKey:'Clé API Anthropic', apiHint:'Obtenir: console.anthropic.com', vignette:'Vignette', filmGrain:'Grain', hue:'Teinte', red:'R', green:'V', blue:'B' },
+  es: { chooseLanguage:'Elige tu idioma', aiAuto:'IA AUTO', aiOff:'IA OFF', aiControlling:'IA controlando', takeManual:'Control manual', letAI:'Dejar a la IA', manual:'MANUAL', settings:'Ajustes', save:'Guardar', reset:'Restablecer', exposure:'Exposición', whiteBalance:'Balance de blancos', color:'Color', grade:'Gradación', lut:'LUT', iso:'ISO', shutter:'Obturador', frameRate:'Fotogramas/s', temperature:'Temperatura', tint:'Tinte', saturation:'Saturación', contrast:'Contraste', pivot:'Pivote', lift:'Lift', gamma:'Gamma', gain:'Gain', natural:'Natural', film:'Película', cinematic:'Cinemático', portrait:'Retrato', night:'Noche', golden:'Dorado', videoSaved:'✓ Vídeo guardado', camUnavailable:'Cámara no disponible', apiKey:'Clave API Anthropic', apiHint:'Obtener: console.anthropic.com', vignette:'Viñeta', filmGrain:'Grano', hue:'Matiz', red:'R', green:'G', blue:'B' },
+  it: { chooseLanguage:'Scegli la lingua', aiAuto:'IA AUTO', aiOff:'IA OFF', aiControlling:"L'IA controlla", takeManual:'Controllo manuale', letAI:"Lascia all'IA", manual:'MANUALE', settings:'Impostazioni', save:'Salva', reset:'Ripristina', exposure:'Esposizione', whiteBalance:'Bilanciamento bianco', color:'Colore', grade:'Gradazione', lut:'LUT', iso:'ISO', shutter:'Otturatore', frameRate:'Frame rate', temperature:'Temperatura', tint:'Tinta', saturation:'Saturazione', contrast:'Contrasto', pivot:'Perno', lift:'Lift', gamma:'Gamma', gain:'Gain', natural:'Naturale', film:'Pellicola', cinematic:'Cinematografico', portrait:'Ritratto', night:'Notte', golden:'Dorato', videoSaved:'✓ Video salvato', camUnavailable:'Fotocamera non disponibile', apiKey:'Chiave API Anthropic', apiHint:'Ottieni: console.anthropic.com', vignette:'Vignetta', filmGrain:'Grana', hue:'Tonalità', red:'R', green:'V', blue:'B' },
+  pt: { chooseLanguage:'Escolha seu idioma', aiAuto:'IA AUTO', aiOff:'IA OFF', aiControlling:'IA controlando', takeManual:'Controle manual', letAI:'Deixar para IA', manual:'MANUAL', settings:'Configurações', save:'Salvar', reset:'Redefinir', exposure:'Exposição', whiteBalance:'Balanço de branco', color:'Cor', grade:'Gradação', lut:'LUT', iso:'ISO', shutter:'Obturador', frameRate:'Taxa de quadros', temperature:'Temperatura', tint:'Matiz', saturation:'Saturação', contrast:'Contraste', pivot:'Pivô', lift:'Lift', gamma:'Gamma', gain:'Gain', natural:'Natural', film:'Filme', cinematic:'Cinematográfico', portrait:'Retrato', night:'Noite', golden:'Dourado', videoSaved:'✓ Vídeo salvo', camUnavailable:'Câmera indisponível', apiKey:'Chave API Anthropic', apiHint:'Obter: console.anthropic.com', vignette:'Vinheta', filmGrain:'Grão', hue:'Matiz', red:'R', green:'V', blue:'A' },
+  zh: { chooseLanguage:'选择语言', aiAuto:'AI 自动', aiOff:'AI 关闭', aiControlling:'AI 控制中', takeManual:'手动控制', letAI:'交给 AI', manual:'手动', settings:'设置', save:'保存', reset:'重置', exposure:'曝光', whiteBalance:'白平衡', color:'颜色', grade:'调色', lut:'LUT', iso:'ISO', shutter:'快门', frameRate:'帧率', temperature:'色温', tint:'色调', saturation:'饱和度', contrast:'对比度', pivot:'支点', lift:'阴影', gamma:'中间调', gain:'高光', natural:'自然', film:'胶片', cinematic:'电影', portrait:'人像', night:'夜间', golden:'黄金', videoSaved:'✓ 视频已保存', camUnavailable:'摄像头不可用', apiKey:'Anthropic API 密钥', apiHint:'获取: console.anthropic.com', vignette:'暗角', filmGrain:'胶片颗粒', hue:'色相', red:'R', green:'G', blue:'B' },
+  ja: { chooseLanguage:'言語を選択', aiAuto:'AI 自動', aiOff:'AI オフ', aiControlling:'AI が制御中', takeManual:'手動操作', letAI:'AI に任せる', manual:'マニュアル', settings:'設定', save:'保存', reset:'リセット', exposure:'露出', whiteBalance:'ホワイトバランス', color:'色', grade:'グレーディング', lut:'LUT', iso:'ISO', shutter:'シャッター', frameRate:'フレームレート', temperature:'色温度', tint:'ティント', saturation:'彩度', contrast:'コントラスト', pivot:'ピボット', lift:'リフト', gamma:'ガンマ', gain:'ゲイン', natural:'ナチュラル', film:'フィルム', cinematic:'シネマ', portrait:'ポートレート', night:'ナイト', golden:'ゴールデン', videoSaved:'✓ 動画保存完了', camUnavailable:'カメラ使用不可', apiKey:'Anthropic APIキー', apiHint:'取得: console.anthropic.com', vignette:'ビネット', filmGrain:'フィルムグレイン', hue:'色相', red:'R', green:'G', blue:'B' },
+  ko: { chooseLanguage:'언어를 선택하세요', aiAuto:'AI 자동', aiOff:'AI 끄기', aiControlling:'AI가 제어 중', takeManual:'수동 제어', letAI:'AI에게 맡기기', manual:'수동', settings:'설정', save:'저장', reset:'초기화', exposure:'노출', whiteBalance:'화이트 밸런스', color:'색상', grade:'색 보정', lut:'LUT', iso:'ISO', shutter:'셔터', frameRate:'프레임 레이트', temperature:'색온도', tint:'틴트', saturation:'채도', contrast:'대비', pivot:'피벗', lift:'리프트', gamma:'감마', gain:'게인', natural:'자연', film:'필름', cinematic:'시네마틱', portrait:'인물', night:'야간', golden:'황금', videoSaved:'✓ 영상 저장됨', camUnavailable:'카메라 사용 불가', apiKey:'Anthropic API 키', apiHint:'발급: console.anthropic.com', vignette:'비네트', filmGrain:'필름 그레인', hue:'색조', red:'R', green:'G', blue:'B' },
+  ar: { chooseLanguage:'اختر لغتك', aiAuto:'ذكاء تلقائي', aiOff:'ذكاء إيقاف', aiControlling:'الذكاء يتحكم', takeManual:'تحكم يدوي', letAI:'دع الذكاء يتحكم', manual:'يدوي', settings:'الإعدادات', save:'حفظ', reset:'إعادة تعيين', exposure:'التعرض', whiteBalance:'توازن الأبيض', color:'اللون', grade:'تدرج', lut:'LUT', iso:'ISO', shutter:'الغالق', frameRate:'معدل الإطارات', temperature:'درجة الحرارة', tint:'الصبغة', saturation:'التشبع', contrast:'التباين', pivot:'المحور', lift:'الظلال', gamma:'غاما', gain:'الإضاءة', natural:'طبيعي', film:'فيلم', cinematic:'سينمائي', portrait:'بورتريه', night:'ليلي', golden:'ذهبي', videoSaved:'✓ تم حفظ الفيديو', camUnavailable:'الكاميرا غير متاحة', apiKey:'مفتاح Anthropic API', apiHint:'احصل عليه: console.anthropic.com', vignette:'فينيت', filmGrain:'حبيبات', hue:'درجة اللون', red:'أ', green:'خ', blue:'ز' },
+  hi: { chooseLanguage:'अपनी भाषा चुनें', aiAuto:'AI स्वतः', aiOff:'AI बंद', aiControlling:'AI नियंत्रण में', takeManual:'मैनुअल नियंत्रण', letAI:'AI को सौंपें', manual:'मैनुअल', settings:'सेटिंग्स', save:'सहेजें', reset:'रीसेट', exposure:'एक्सपोज़र', whiteBalance:'व्हाइट बैलेंस', color:'रंग', grade:'ग्रेडिंग', lut:'LUT', iso:'ISO', shutter:'शटर', frameRate:'फ्रेम दर', temperature:'तापमान', tint:'टिंट', saturation:'संतृप्ति', contrast:'कंट्रास्ट', pivot:'धुरी', lift:'लिफ्ट', gamma:'गामा', gain:'गेन', natural:'प्राकृतिक', film:'फिल्म', cinematic:'सिनेमाई', portrait:'पोर्ट्रेट', night:'रात', golden:'सुनहरा', videoSaved:'✓ वीडियो सहेजा गया', camUnavailable:'कैमरा अनुपलब्ध', apiKey:'Anthropic API कुंजी', apiHint:'प्राप्त करें: console.anthropic.com', vignette:'विग्नेट', filmGrain:'ग्रेन', hue:'रंगत', red:'लाल', green:'हरा', blue:'नीला' },
 };
 
+// ─── LUT presets ─────────────────────────────────────────────────────────────
+const LUTS = {
+  natural:   { liftR:0,     liftG:0,     liftB:0,     gainR:1,    gainG:1,    gainB:1,    contrast:1.0,  saturate:1.0,  hueRot:0 },
+  film:      { liftR:-0.01, liftG:0,     liftB:0.02,  gainR:1.04, gainG:1.0,  gainB:0.97, contrast:0.95, saturate:0.9,  hueRot:-2 },
+  cinematic: { liftR:-0.02, liftG:0,     liftB:0.03,  gainR:1.08, gainG:1.0,  gainB:0.94, contrast:1.15, saturate:1.2,  hueRot:-4 },
+  portrait:  { liftR:0.01,  liftG:0.005, liftB:0,     gainR:1.05, gainG:1.0,  gainB:0.98, contrast:0.98, saturate:1.08, hueRot:2 },
+  night:     { liftR:0,     liftG:0.01,  liftB:0.03,  gainR:1.0,  gainG:1.0,  gainB:1.02, contrast:1.05, saturate:0.8,  hueRot:4 },
+  golden:    { liftR:0.02,  liftG:0,     liftB:-0.01, gainR:1.12, gainG:1.02, gainB:0.9,  contrast:1.05, saturate:1.25, hueRot:6 },
+};
+
+const LANGUAGES = [
+  { code:'en', flag:'🇺🇸', name:'English' },
+  { code:'ru', flag:'🇷🇺', name:'Русский' },
+  { code:'de', flag:'🇩🇪', name:'Deutsch' },
+  { code:'fr', flag:'🇫🇷', name:'Français' },
+  { code:'es', flag:'🇪🇸', name:'Español' },
+  { code:'it', flag:'🇮🇹', name:'Italiano' },
+  { code:'pt', flag:'🇧🇷', name:'Português' },
+  { code:'zh', flag:'🇨🇳', name:'中文' },
+  { code:'ja', flag:'🇯🇵', name:'日本語' },
+  { code:'ko', flag:'🇰🇷', name:'한국어' },
+  { code:'ar', flag:'🇸🇦', name:'العربية' },
+  { code:'hi', flag:'🇮🇳', name:'हिन्दी' },
+];
+
 // ─── State ────────────────────────────────────────────────────────────────────
+function defaultParams() {
+  return {
+    exposure:0, temperature:5600, tint:0, contrast:1, pivot:0.5, saturation:1, hue:0,
+    liftR:0, liftG:0, liftB:0, gammaR:0, gammaG:0, gammaB:0, gainR:1, gainG:1, gainB:1,
+    sharpness:0.5, vignette:0, filmGrain:0, lut:'natural',
+  };
+}
+
 const S = {
+  lang: localStorage.getItem('ailens_lang') || null,
   apiKey: localStorage.getItem('ailens_key') || '',
   hasServerKey: false,
   facing: 'environment',
   stream: null,
+  mode: 'ai',
   isRecording: false,
   recorder: null,
   chunks: [],
@@ -322,23 +380,56 @@ const S = {
   aiTimer: null,
   aiActive: false,
   renderRunning: false,
+  progressInterval: null,
+  aiCycleStart: null,
+  overlays: { grid:false, zebra:false, peaking:false, histogram:false },
+  params: { iso:800, shutterAngle:180, fps:24, temperature:5600, tint:0 },
   cur: defaultParams(),
   tgt: defaultParams(),
   animFrame: null,
+  frameCount: 0,
+  activeTab: 'exposure',
 };
 
-function defaultParams() {
-  return {
-    exposure: 0, temperature: 5600, tint: 0,
-    contrast: 1, pivot: 0.5, saturation: 1, hue: 0,
-    liftR: 0, liftG: 0, liftB: 0,
-    gammaR: 0, gammaG: 0, gammaB: 0,
-    gainR: 1, gainG: 1, gainB: 1,
-    sharpness: 0.5, vignette: 0, filmGrain: 0, lut: 'natural',
-  };
+// ─── Translation helpers ──────────────────────────────────────────────────────
+function t(key) { return (T[S.lang] || T.en)[key] || T.en[key] || key; }
+
+function applyTranslations() {
+  document.querySelectorAll('[data-t]').forEach(el => {
+    const key = el.dataset.t;
+    el.textContent = t(key);
+  });
 }
 
-// ─── Camera ───────────────────────────────────────────────────────────────────
+// ─── Language screen ──────────────────────────────────────────────────────────
+function buildLangScreen() {
+  const grid = document.getElementById('lang-grid');
+  grid.innerHTML = '';
+  LANGUAGES.forEach(l => {
+    const card = document.createElement('div');
+    card.className = 'lang-card';
+    card.innerHTML = `<div class="lang-flag">${l.flag}</div><div class="lang-name">${l.name}</div>`;
+    card.onclick = () => selectLanguage(l.code);
+    grid.appendChild(card);
+  });
+}
+
+function selectLanguage(code) {
+  S.lang = code;
+  localStorage.setItem('ailens_lang', code);
+  showCamera();
+}
+
+// ─── Camera screen ────────────────────────────────────────────────────────────
+function showCamera() {
+  document.getElementById('screen-lang').classList.add('hidden');
+  document.getElementById('screen-camera').classList.remove('hidden');
+  applyTranslations();
+  updateModeUI();
+  updateTopChips();
+  initCamera();
+}
+
 async function initCamera() {
   try {
     if (S.stream) S.stream.getTracks().forEach(t => t.stop());
@@ -347,18 +438,22 @@ async function initCamera() {
       audio: true,
     });
     document.getElementById('video').srcObject = S.stream;
-    document.getElementById('perm').classList.add('hidden');
-    scheduleAI(1500);
+    document.getElementById('screen-perm').classList.add('hidden');
     if (!S.renderRunning) startRenderLoop();
-  } catch (e) {
+    scheduleAI(1200);
+    startProgressBar();
+  } catch {
     try {
       S.stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       document.getElementById('video').srcObject = S.stream;
-      document.getElementById('perm').classList.add('hidden');
-      scheduleAI(1500);
+      document.getElementById('screen-perm').classList.add('hidden');
       if (!S.renderRunning) startRenderLoop();
+      scheduleAI(1200);
+      startProgressBar();
     } catch (e2) {
-      document.querySelector('#perm p').textContent = 'Камера недоступна: ' + e2.message;
+      document.getElementById('screen-camera').classList.add('hidden');
+      document.getElementById('screen-perm').classList.remove('hidden');
+      document.getElementById('perm-text').textContent = t('camUnavailable');
     }
   }
 }
@@ -371,19 +466,31 @@ function flipCamera() {
   initCamera();
 }
 
-// ─── Recording ────────────────────────────────────────────────────────────────
-function toggleRecord() {
-  S.isRecording ? stopRecord() : startRecord();
+// ─── Top chips ────────────────────────────────────────────────────────────────
+function updateTopChips() {
+  document.getElementById('chip-wb').textContent = S.params.temperature + 'K';
+  document.getElementById('chip-iso').textContent = 'ISO ' + S.params.iso;
+  document.getElementById('chip-sh').textContent = S.params.shutterAngle + '°';
+  document.getElementById('chip-fps').textContent = S.params.fps + 'fps';
 }
+
+// ─── Overlay toggles ─────────────────────────────────────────────────────────
+function toggleOverlay(name) {
+  S.overlays[name] = !S.overlays[name];
+  document.getElementById('btn-' + name).classList.toggle('active', S.overlays[name]);
+  if (name === 'grid') document.getElementById('grid-overlay').classList.toggle('hidden', !S.overlays.grid);
+  if (name === 'histogram') document.getElementById('histogram-widget').classList.toggle('show', S.overlays.histogram);
+}
+
+// ─── Recording ────────────────────────────────────────────────────────────────
+function toggleRecord() { S.isRecording ? stopRecord() : startRecord(); }
 
 function startRecord() {
   if (!S.stream) return;
   S.chunks = [];
-  const mime = ['video/mp4;codecs=h264','video/mp4','video/webm;codecs=vp9','video/webm']
-    .find(t => MediaRecorder.isTypeSupported(t)) || '';
+  const mime = ['video/mp4;codecs=h264','video/mp4','video/webm;codecs=vp9','video/webm'].find(m => MediaRecorder.isTypeSupported(m)) || '';
   try { S.recorder = new MediaRecorder(S.stream, mime ? { mimeType: mime } : {}); }
   catch { S.recorder = new MediaRecorder(S.stream); }
-
   S.recorder.ondataavailable = e => { if (e.data?.size) S.chunks.push(e.data); };
   S.recorder.onstop = () => {
     S.lastBlob = new Blob(S.chunks, { type: S.recorder.mimeType });
@@ -393,12 +500,8 @@ function startRecord() {
   S.isRecording = true;
   S.recStart = Date.now();
   document.getElementById('rec-btn').classList.add('recording');
-  document.getElementById('rec-timer').classList.add('show');
-
-  S.recTick = setInterval(() => {
-    const s = Math.floor((Date.now() - S.recStart) / 1000);
-    document.getElementById('rec-time').textContent = `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
-  }, 500);
+  document.getElementById('rec-badge').classList.remove('hidden');
+  S.recTick = setInterval(updateTimecode, 1000 / S.params.fps);
 }
 
 function stopRecord() {
@@ -406,45 +509,83 @@ function stopRecord() {
   S.isRecording = false;
   clearInterval(S.recTick);
   document.getElementById('rec-btn').classList.remove('recording');
-  document.getElementById('rec-timer').classList.remove('show');
+  document.getElementById('rec-badge').classList.add('hidden');
+}
+
+function updateTimecode() {
+  const elapsed = Date.now() - S.recStart;
+  const totalFrames = Math.floor(elapsed / 1000 * S.params.fps);
+  const ff = totalFrames % S.params.fps;
+  const ss = Math.floor(totalFrames / S.params.fps) % 60;
+  const mm = Math.floor(totalFrames / S.params.fps / 60) % 60;
+  const hh = Math.floor(totalFrames / S.params.fps / 3600);
+  document.getElementById('rec-tc').textContent =
+    String(hh).padStart(2,'0') + ':' + String(mm).padStart(2,'0') + ':' +
+    String(ss).padStart(2,'0') + ':' + String(ff).padStart(2,'0');
 }
 
 async function saveVideo() {
   if (!S.lastBlob) return;
   const ext = S.lastBlob.type.includes('mp4') ? 'mp4' : 'webm';
-  const fileName = `ailens-${Date.now()}.${ext}`;
-
-  // 1) Native share/save sheet (lets user save to gallery on mobile)
+  const fileName = 'ailens-' + Date.now() + '.' + ext;
   try {
     const file = new File([S.lastBlob], fileName, { type: S.lastBlob.type });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       await navigator.share({ files: [file], title: 'AI Lens' });
-      toast('✓ Видео сохранено');
-      return;
+      toast(t('videoSaved')); return;
     }
-  } catch (e) {
-    if (e.name === 'AbortError') return; // user cancelled share sheet
-  }
-
-  // 2) Fallback — auto download to device
+  } catch (e) { if (e.name === 'AbortError') return; }
   const url = URL.createObjectURL(S.lastBlob);
   const a = document.createElement('a');
   a.href = url; a.download = fileName; a.click();
   setTimeout(() => URL.revokeObjectURL(url), 5000);
-  toast('✓ Видео сохранено');
+  toast(t('videoSaved'));
 }
 
-// ─── AI Analysis ─────────────────────────────────────────────────────────────
-function scheduleAI(delay = 30000) {
+// ─── AI mode ──────────────────────────────────────────────────────────────────
+function toggleAIMode() {
+  if (S.mode === 'ai') {
+    S.mode = 'manual';
+  } else {
+    enableAI();
+  }
+  updateModeUI();
+}
+
+function enableAI() {
+  S.mode = 'ai';
+  closeManual();
+  updateModeUI();
+  runAI();
+}
+
+function updateModeUI() {
+  const aiBtn = document.getElementById('ai-mode-btn');
+  aiBtn.classList.toggle('active', S.mode === 'ai');
+  aiBtn.textContent = S.mode === 'ai' ? t('aiAuto') : t('aiOff');
+}
+
+// ─── AI Analysis ──────────────────────────────────────────────────────────────
+function scheduleAI(delay) {
   clearTimeout(S.aiTimer);
-  S.aiTimer = setTimeout(runAI, delay);
+  if (S.mode === 'ai') S.aiTimer = setTimeout(runAI, delay || 30000);
+}
+
+function startProgressBar() {
+  clearInterval(S.progressInterval);
+  S.aiCycleStart = Date.now();
+  S.progressInterval = setInterval(() => {
+    if (S.mode !== 'ai') { document.getElementById('ai-progress-fill').style.width = '0%'; return; }
+    const pct = Math.min((Date.now() - S.aiCycleStart) / 30000 * 100, 100);
+    document.getElementById('ai-progress-fill').style.width = pct + '%';
+  }, 300);
 }
 
 async function runAI() {
+  if (S.mode !== 'ai') return;
   if (!S.apiKey && !S.hasServerKey) { scheduleAI(30000); return; }
   const b64 = captureFrame();
   if (!b64) { scheduleAI(10000); return; }
-
   setAIActive(true);
   try {
     const res = await fetch('/api/analyze', {
@@ -453,16 +594,16 @@ async function runAI() {
       body: JSON.stringify({ imageBase64: b64 }),
     });
     if (res.ok) {
-      const params = await res.json();
-      applyAIParams(params);
-      // Brief visual confirmation
-      const lutName = params.lut || 'natural';
-      const lutLabels = { natural:'Нейтральный', film:'Плёнка', cinematic:'Кино', portrait:'Портрет', night:'Ночь', golden:'Золотой' };
-      toast(`✦ AI: ${lutLabels[lutName] || lutName}`);
+      const p = await res.json();
+      applyAIParams(p);
+      const lutKey = p.lut || 'natural';
+      document.getElementById('ai-lut-name').textContent = t(lutKey);
+      toast('✦ AI: ' + t(lutKey));
     }
-  } catch (e) { /* silent */ }
+  } catch { /* silent */ }
   finally {
     setAIActive(false);
+    S.aiCycleStart = Date.now();
     scheduleAI(30000);
   }
 }
@@ -480,177 +621,380 @@ function captureFrame() {
 }
 
 function applyAIParams(p) {
-  const cl = (v, mn, mx, def) => {
-    const n = (v === undefined || v === null || isNaN(+v)) ? def : +v;
-    return Math.max(mn, Math.min(mx, n));
-  };
-  const lift = p.lift || {}, gamma = p.gamma || {}, gain = p.gain || {};
+  const cl = (v, mn, mx, d) => { const n = (v == null || isNaN(+v)) ? d : +v; return Math.max(mn, Math.min(mx, n)); };
+  const lf = p.lift || {}, gm = p.gamma || {}, gn = p.gain || {};
   S.tgt = {
-    exposure:    cl(p.exposure,    -2,    2,    0),
-    temperature: cl(p.temperature, 2500,  10000, 5600),
-    tint:        cl(p.tint,        -50,   50,   0),
-    contrast:    cl(p.contrast,    0,     2,    1),
-    pivot:       cl(p.pivot,       0.1,   0.9,  0.5),
-    saturation:  cl(p.saturation,  0,     2,    1),
-    hue:         cl(p.hue,         -1,    1,    0),
-    liftR:  cl(lift.r,  -0.2, 0.2, 0),
-    liftG:  cl(lift.g,  -0.2, 0.2, 0),
-    liftB:  cl(lift.b,  -0.2, 0.2, 0),
-    gammaR: cl(gamma.r, -0.5, 0.5, 0),
-    gammaG: cl(gamma.g, -0.5, 0.5, 0),
-    gammaB: cl(gamma.b, -0.5, 0.5, 0),
-    gainR:  cl(gain.r,  0.5,  2.0, 1),
-    gainG:  cl(gain.g,  0.5,  2.0, 1),
-    gainB:  cl(gain.b,  0.5,  2.0, 1),
-    sharpness:   cl(p.sharpness,   0,     1,    0.5),
-    vignette:    cl(p.vignette,    0,     1,    0),
-    filmGrain:   cl(p.filmGrain,   0,     1,    0),
+    exposure:    cl(p.exposure,    -2,   2,    0),
+    temperature: cl(p.temperature, 2500, 10000, 5600),
+    tint:        cl(p.tint,        -50,  50,   0),
+    contrast:    cl(p.contrast,    0,    2,    1),
+    pivot:       cl(p.pivot,       0.1,  0.9,  0.5),
+    saturation:  cl(p.saturation,  0,    2,    1),
+    hue:         cl(p.hue,         -1,   1,    0),
+    liftR:  cl(lf.r,  -0.2, 0.2, 0),  liftG:  cl(lf.g,  -0.2, 0.2, 0),  liftB:  cl(lf.b,  -0.2, 0.2, 0),
+    gammaR: cl(gm.r,  -0.5, 0.5, 0),  gammaG: cl(gm.g,  -0.5, 0.5, 0),  gammaB: cl(gm.b,  -0.5, 0.5, 0),
+    gainR:  cl(gn.r,  0.5,  2.0, 1),  gainG:  cl(gn.g,  0.5,  2.0, 1),  gainB:  cl(gn.b,  0.5,  2.0, 1),
+    sharpness:   cl(p.sharpness,   0,    1,    0.5),
+    vignette:    cl(p.vignette,    0,    1,    0),
+    filmGrain:   cl(p.filmGrain,   0,    1,    0),
     lut:         LUTS[p.lut] ? p.lut : 'natural',
   };
+  if (p.temperature) { S.params.temperature = Math.round(S.tgt.temperature); }
+  if (p.tint) { S.params.tint = Math.round(S.tgt.tint); }
+  updateTopChips();
 }
 
 function setAIActive(on) {
-  S.aiActive = on;
   document.getElementById('ai-dot').classList.toggle('on', on);
-  document.getElementById('ai-label').classList.toggle('on', on);
+  document.getElementById('ai-strip-label').classList.toggle('on', on);
 }
 
-// ─── Render loop — smooth interpolation toward target params ──────────────────
-const LERP_SPEED = 0.06; // per frame ~60fps → ~0.6s transition
-
+// ─── Render loop ──────────────────────────────────────────────────────────────
+const LERP = 0.06;
 function lerp(a, b, t) { return a + (b - a) * t; }
 
-// Convert a Kelvin white-balance target into per-channel RGB multipliers.
-// Camera WB is inverse of scene light: low K (warm camera) boosts red, high K boosts blue.
-function kelvinToRGB(kelvin) {
-  // Normalize around 5600K neutral; positive = warmer camera comp, negative = cooler.
-  const d = (5600 - kelvin) / 5600; // >0 when kelvin<5600 (warm), <0 when cool
-  return {
-    r: 1 + d * 0.35,
-    g: 1 + d * 0.05,
-    b: 1 - d * 0.40,
-  };
-}
+const INTERP_KEYS = ['exposure','temperature','tint','contrast','pivot','saturation','hue',
+  'liftR','liftG','liftB','gammaR','gammaG','gammaB','gainR','gainG','gainB','sharpness','vignette','filmGrain'];
 
-const INTERP_KEYS = [
-  'exposure','temperature','tint','contrast','pivot','saturation','hue',
-  'liftR','liftG','liftB','gammaR','gammaG','gammaB','gainR','gainG','gainB',
-  'sharpness','vignette','filmGrain',
-];
+function kelvinToRGB(k) {
+  const d = (5600 - k) / 5600;
+  return { r: 1 + d * 0.35, g: 1 + d * 0.05, b: 1 - d * 0.40 };
+}
 
 function startRenderLoop() {
   S.renderRunning = true;
-  const video  = document.getElementById('video');
-  const vign   = document.getElementById('vignette');
-  const grain  = document.getElementById('grain');
-  const gctx   = grain.getContext('2d');
-  const fnR = document.getElementById('fnR');
-  const fnG = document.getElementById('fnG');
-  const fnB = document.getElementById('fnB');
-
+  const video = document.getElementById('video');
+  const vign  = document.getElementById('vignette');
+  const grain = document.getElementById('grain');
+  const gctx  = grain.getContext('2d');
+  const fnR   = document.getElementById('fnR');
+  const fnG   = document.getElementById('fnG');
+  const fnB   = document.getElementById('fnB');
+  const ovCanvas = document.getElementById('canvas-overlay');
+  const ovCtx    = ovCanvas.getContext('2d');
   let grainT = 0;
 
   function frame() {
     S.animFrame = requestAnimationFrame(frame);
-
-    // Smoothly interpolate every numeric param toward target
-    const c = S.cur, t = S.tgt;
-    for (const k of INTERP_KEYS) c[k] = lerp(c[k], t[k], LERP_SPEED);
-    if (c.lut !== t.lut) c.lut = t.lut; // snap lut instantly
+    S.frameCount++;
+    const c = S.cur, tgt = S.tgt;
+    for (const k of INTERP_KEYS) c[k] = lerp(c[k], tgt[k], LERP);
+    if (c.lut !== tgt.lut) c.lut = tgt.lut;
 
     const lut = LUTS[c.lut] || LUTS.natural;
+    const wb  = kelvinToRGB(c.temperature);
+    const tintFactor = c.tint / 50;
+    const tR = 1 + Math.max(0, tintFactor) * 0.12;
+    const tG = 1 - Math.abs(tintFactor) * 0.08;
+    const tB = 1 + Math.max(0, tintFactor) * 0.12;
 
-    // ── White balance: Kelvin + tint → per-channel gain multipliers ──
-    const wb = kelvinToRGB(c.temperature);
-    const tintR = 1 + Math.max(0, c.tint) / 50 * 0.12;  // magenta adds R,B
-    const tintG = 1 - Math.abs(c.tint) / 50 * 0.10 * (c.tint > 0 ? 1 : -1); // sign flips for green
-    const tintB = 1 + Math.max(0, c.tint) / 50 * 0.12;
-
-    // ── Lift / Gamma / Gain → SVG feComponentTransfer (per channel) ──
-    // output = amplitude * input^exponent + offset  (amplitude=gain, exponent~gamma, offset=lift)
-    // Fold LUT base grade + white balance into the channel gains/lifts.
-    const setFunc = (fn, lift, gammaV, gain, wbMul, tintMul, lutLift, lutGain) => {
-      const amplitude = Math.max(0.05, gain * wbMul * tintMul * lutGain);
-      const exponent  = Math.max(0.2, Math.pow(2, -(gammaV + 0) ));      // gamma>0 → brighter mids
-      const offset    = lift + lutLift;
-      fn.setAttribute('amplitude', amplitude.toFixed(4));
-      fn.setAttribute('exponent',  exponent.toFixed(4));
-      fn.setAttribute('offset',    offset.toFixed(4));
+    const setFn = (fn, lift, gv, gain, wbM, tM, lLift, lGain) => {
+      const amp = Math.max(0.05, gain * wbM * tM * lGain);
+      const exp = Math.max(0.15, Math.pow(2, -gv));
+      const off = lift + lLift;
+      fn.setAttribute('amplitude', amp.toFixed(4));
+      fn.setAttribute('exponent',  exp.toFixed(4));
+      fn.setAttribute('offset',    off.toFixed(4));
     };
-    setFunc(fnR, c.liftR, c.gammaR, c.gainR, wb.r, tintR, lut.liftR, lut.gainR);
-    setFunc(fnG, c.liftG, c.gammaG, c.gainG, wb.g, tintG, lut.liftG, lut.gainG);
-    setFunc(fnB, c.liftB, c.gammaB, c.gainB, wb.b, tintB, lut.liftB, lut.gainB);
+    setFn(fnR, c.liftR, c.gammaR, c.gainR, wb.r, tR, lut.liftR, lut.gainR);
+    setFn(fnG, c.liftG, c.gammaG, c.gainG, wb.g, tG, lut.liftG, lut.gainG);
+    setFn(fnB, c.liftB, c.gammaB, c.gainB, wb.b, tB, lut.liftB, lut.gainB);
 
-    // ── Global tone via CSS filter (chained after the SVG grade) ──
     const brightness = Math.pow(2, c.exposure);
-    const contrast   = c.contrast * lut.contrast;
-    const sat        = c.saturation * lut.saturate;
-    const hueDeg     = c.hue * 30 + lut.hueRot;
-
+    const hueDeg = c.hue * 30 + lut.hueRot;
     video.style.filter = [
       'url(#bmd-grade)',
-      `brightness(${brightness.toFixed(3)})`,
-      `contrast(${contrast.toFixed(3)})`,
-      `saturate(${sat.toFixed(3)})`,
-      Math.abs(hueDeg) > 0.1 ? `hue-rotate(${hueDeg.toFixed(1)}deg)` : '',
+      'brightness(' + brightness.toFixed(3) + ')',
+      'contrast(' + (c.contrast * lut.contrast).toFixed(3) + ')',
+      'saturate(' + (c.saturation * lut.saturate).toFixed(3) + ')',
+      Math.abs(hueDeg) > 0.1 ? 'hue-rotate(' + hueDeg.toFixed(1) + 'deg)' : '',
     ].filter(Boolean).join(' ');
 
     // Vignette
-    const v = c.vignette;
-    if (v > 0.01) {
-      const stop = Math.round((1 - v * 0.5) * 100);
-      vign.style.background = `radial-gradient(ellipse at center, transparent ${stop}%, rgba(0,0,0,${(v * 0.85).toFixed(2)}) 100%)`;
-    } else {
-      vign.style.background = 'none';
-    }
+    if (c.vignette > 0.01) {
+      const stop = Math.round((1 - c.vignette * 0.5) * 100);
+      vign.style.background = 'radial-gradient(ellipse at center, transparent ' + stop + '%, rgba(0,0,0,' + (c.vignette * 0.85).toFixed(2) + ') 100%)';
+    } else { vign.style.background = 'none'; }
 
     // Film grain
-    const gv = c.filmGrain;
-    if (gv > 0.01) {
-      grain.style.opacity = gv * 0.35;
-      // Resize canvas to match screen if needed
+    if (c.filmGrain > 0.01) {
+      grain.style.opacity = c.filmGrain * 0.35;
       if (grain.width !== window.innerWidth) { grain.width = window.innerWidth; grain.height = window.innerHeight; }
       grainT++;
-      if (grainT % 2 === 0) { // update grain every 2 frames
-        drawGrain(gctx, grain.width, grain.height, gv);
+      if (grainT % 2 === 0) drawGrain(gctx, grain.width, grain.height, c.filmGrain);
+    } else { grain.style.opacity = 0; }
+
+    // Canvas overlays — resize if needed
+    if (ovCanvas.width !== ovCanvas.offsetWidth || ovCanvas.height !== ovCanvas.offsetHeight) {
+      ovCanvas.width = ovCanvas.offsetWidth || window.innerWidth;
+      ovCanvas.height = ovCanvas.offsetHeight || window.innerHeight;
+    }
+
+    const doZebra   = S.overlays.zebra   && S.frameCount % 5 === 0;
+    const doPeaking = S.overlays.peaking && S.frameCount % 5 === 0;
+    const doHist    = S.overlays.histogram && S.frameCount % 10 === 0;
+
+    if (doZebra || doPeaking) {
+      ovCtx.clearRect(0, 0, ovCanvas.width, ovCanvas.height);
+      const tmp = document.createElement('canvas');
+      tmp.width = 160; tmp.height = Math.round(video.videoHeight / video.videoWidth * 160) || 90;
+      const tc = tmp.getContext('2d');
+      if (video.videoWidth) {
+        tc.drawImage(video, 0, 0, tmp.width, tmp.height);
+        const id = tc.getImageData(0, 0, tmp.width, tmp.height);
+        if (doZebra) drawZebra(ovCtx, id, tmp.width, tmp.height, ovCanvas.width, ovCanvas.height);
+        if (doPeaking) drawPeaking(ovCtx, id, tmp.width, tmp.height, ovCanvas.width, ovCanvas.height);
       }
-    } else {
-      grain.style.opacity = 0;
+    } else if (!doZebra && !doPeaking && S.frameCount % 30 === 0) {
+      ovCtx.clearRect(0, 0, ovCanvas.width, ovCanvas.height);
+    }
+
+    if (doHist && video.videoWidth) {
+      const hc = document.getElementById('histogram-canvas');
+      const hx = hc.getContext('2d');
+      drawHistogram(hx, video, hc.width, hc.height);
     }
   }
-
   frame();
 }
 
 function drawGrain(ctx, w, h, intensity) {
-  const imageData = ctx.createImageData(w, h);
-  const data = imageData.data;
-  const amount = intensity * 80;
-  for (let i = 0; i < data.length; i += 4) {
-    const n = (Math.random() - 0.5) * amount;
-    data[i]     = 128 + n;
-    data[i + 1] = 128 + n;
-    data[i + 2] = 128 + n;
-    data[i + 3] = 255;
+  const d = ctx.createImageData(w, h);
+  const arr = d.data;
+  const amt = intensity * 70;
+  for (let i = 0; i < arr.length; i += 4) {
+    const n = (Math.random() - 0.5) * amt + 128;
+    arr[i] = arr[i+1] = arr[i+2] = n; arr[i+3] = 255;
   }
-  ctx.putImageData(imageData, 0, 0);
+  ctx.putImageData(d, 0, 0);
+}
+
+function drawZebra(ctx, id, sw, sh, dw, dh) {
+  const sx = dw / sw, sy = dh / sh;
+  const data = id.data;
+  for (let y = 0; y < sh; y++) {
+    for (let x = 0; x < sw; x++) {
+      const i = (y * sw + x) * 4;
+      const lum = (data[i] * 0.299 + data[i+1] * 0.587 + data[i+2] * 0.114) / 255;
+      if (lum > 0.93) {
+        const dx = Math.round(x * sx), dy = Math.round(y * sy);
+        const stripe = ((dx + dy) >> 3) & 1;
+        if (stripe) {
+          ctx.fillStyle = 'rgba(255,200,0,0.7)';
+          ctx.fillRect(dx, dy, Math.ceil(sx), Math.ceil(sy));
+        }
+      }
+    }
+  }
+}
+
+function drawPeaking(ctx, id, sw, sh, dw, dh) {
+  const sx = dw / sw, sy = dh / sh;
+  const data = id.data;
+  for (let y = 1; y < sh - 1; y++) {
+    for (let x = 1; x < sw - 1; x++) {
+      const i  = (y * sw + x) * 4;
+      const ir = (y * sw + (x+1)) * 4;
+      const id2 = ((y+1) * sw + x) * 4;
+      const lum  = (data[i]  * 0.299 + data[i+1]  * 0.587 + data[i+2]  * 0.114);
+      const lumR = (data[ir] * 0.299 + data[ir+1] * 0.587 + data[ir+2] * 0.114);
+      const lumD = (data[id2]* 0.299 + data[id2+1]* 0.587 + data[id2+2]* 0.114);
+      const edgeX = Math.abs(lum - lumR);
+      const edgeY = Math.abs(lum - lumD);
+      if (edgeX > 28 || edgeY > 28) {
+        ctx.fillStyle = 'rgba(255,30,30,0.85)';
+        ctx.fillRect(Math.round(x * sx), Math.round(y * sy), 2, 2);
+      }
+    }
+  }
+}
+
+function drawHistogram(ctx, video, w, h) {
+  const tmp = document.createElement('canvas');
+  tmp.width = 80; tmp.height = 45;
+  const tc = tmp.getContext('2d');
+  tc.drawImage(video, 0, 0, 80, 45);
+  const id = tc.getImageData(0, 0, 80, 45);
+  const r = new Uint32Array(256), g = new Uint32Array(256), b = new Uint32Array(256);
+  for (let i = 0; i < id.data.length; i += 4) { r[id.data[i]]++; g[id.data[i+1]]++; b[id.data[i+2]]++; }
+  const maxV = Math.max(...r, ...g, ...b) || 1;
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.fillRect(0, 0, w, h);
+  const drawChan = (arr, color) => {
+    ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 1;
+    for (let i = 0; i < 256; i++) {
+      const x = i / 255 * w;
+      const y = h - (arr[i] / maxV) * h;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  };
+  drawChan(r, 'rgba(255,70,70,0.8)');
+  drawChan(g, 'rgba(70,220,70,0.8)');
+  drawChan(b, 'rgba(70,130,255,0.8)');
+}
+
+// ─── Manual panel ─────────────────────────────────────────────────────────────
+const TABS = ['exposure', 'whiteBalance', 'color', 'grade', 'lut'];
+
+function openManual() {
+  buildManualPanel();
+  document.getElementById('panel-manual').classList.add('show');
+}
+
+function closeManual() {
+  document.getElementById('panel-manual').classList.remove('show');
+}
+
+function buildManualPanel() {
+  // Tabs
+  const tabsEl = document.getElementById('panel-tabs');
+  tabsEl.innerHTML = '';
+  TABS.forEach(tab => {
+    const btn = document.createElement('button');
+    btn.className = 'ptab' + (tab === S.activeTab ? ' active' : '');
+    btn.textContent = t(tab);
+    btn.onclick = () => { S.activeTab = tab; buildManualPanel(); };
+    tabsEl.appendChild(btn);
+  });
+
+  // Body
+  const body = document.getElementById('panel-body');
+  body.innerHTML = '';
+
+  // AI banner in manual mode
+  if (S.mode === 'ai') {
+    const banner = document.createElement('div');
+    banner.className = 'ai-banner';
+    banner.innerHTML = '<div class="ai-banner-text">' + t('aiControlling') + '</div><button class="ai-banner-btn" onclick="disableAI()">' + t('takeManual') + '</button>';
+    body.appendChild(banner);
+  }
+
+  const disabled = S.mode === 'ai';
+
+  if (S.activeTab === 'exposure') {
+    body.appendChild(makeSlider('iso', t('iso'), 100, 6400, S.params.iso, v => { S.params.iso = Math.round(v); updateTopChips(); }, disabled, v => 'ISO ' + Math.round(v)));
+    body.appendChild(makeSlider('shutterAngle', t('shutter'), 45, 360, S.params.shutterAngle, v => { S.params.shutterAngle = Math.round(v); updateTopChips(); }, disabled, v => Math.round(v) + '°'));
+    const fpsSec = makeSection(t('frameRate'));
+    const fpsRow = document.createElement('div'); fpsRow.className = 'chip-row';
+    [24, 25, 30, 50, 60].forEach(fps => {
+      const ch = document.createElement('div');
+      ch.className = 'sel-chip' + (S.params.fps === fps ? ' active' : '');
+      ch.textContent = fps + 'fps'; if (disabled) ch.style.opacity = '0.35';
+      ch.onclick = () => { if (disabled) return; S.params.fps = fps; updateTopChips(); buildManualPanel(); };
+      fpsRow.appendChild(ch);
+    });
+    fpsSec.appendChild(fpsRow); body.appendChild(fpsSec);
+    body.appendChild(makeSlider('exposure', t('exposure'), -200, 200, S.tgt.exposure * 100,
+      v => { S.tgt.exposure = v / 100; }, disabled, v => (v >= 0 ? '+' : '') + (v/100).toFixed(2) + 'EV'));
+
+  } else if (S.activeTab === 'whiteBalance') {
+    body.appendChild(makeSlider('temperature', t('temperature'), 2500, 10000, S.tgt.temperature,
+      v => { S.tgt.temperature = v; S.params.temperature = Math.round(v); updateTopChips(); }, disabled, v => Math.round(v) + 'K'));
+    body.appendChild(makeSlider('tint', t('tint'), -50, 50, S.tgt.tint,
+      v => { S.tgt.tint = v; }, disabled, v => (v > 0 ? '+' : '') + Math.round(v)));
+
+  } else if (S.activeTab === 'color') {
+    body.appendChild(makeSlider('saturation', t('saturation'), 0, 200, S.tgt.saturation * 100,
+      v => { S.tgt.saturation = v / 100; }, disabled, v => Math.round(v) + '%'));
+    body.appendChild(makeSlider('contrast', t('contrast'), 50, 200, S.tgt.contrast * 100,
+      v => { S.tgt.contrast = v / 100; }, disabled, v => Math.round(v) + '%'));
+    body.appendChild(makeSlider('pivot', t('pivot'), 10, 90, S.tgt.pivot * 100,
+      v => { S.tgt.pivot = v / 100; }, disabled, v => (v/100).toFixed(2)));
+    body.appendChild(makeSlider('hue', t('hue'), -100, 100, S.tgt.hue * 100,
+      v => { S.tgt.hue = v / 100; }, disabled, v => (v > 0 ? '+' : '') + Math.round(v)));
+    body.appendChild(makeSlider('vignette', t('vignette'), 0, 100, S.tgt.vignette * 100,
+      v => { S.tgt.vignette = v / 100; }, disabled, v => Math.round(v) + '%'));
+    body.appendChild(makeSlider('filmGrain', t('filmGrain'), 0, 100, S.tgt.filmGrain * 100,
+      v => { S.tgt.filmGrain = v / 100; }, disabled, v => Math.round(v) + '%'));
+
+  } else if (S.activeTab === 'grade') {
+    const makeRGB = (baseKey, label) => {
+      const sec = makeSection(label);
+      ['R', 'G', 'B'].forEach(ch => {
+        const k = baseKey + ch;
+        const isGain = baseKey === 'gain';
+        const mn = isGain ? 50 : -50, mx = isGain ? 200 : 50, def = isGain ? 100 : 0;
+        const cur = isGain ? S.tgt[k] * 100 : S.tgt[k] * 100;
+        sec.appendChild(makeSlider(k, t(ch === 'R' ? 'red' : ch === 'G' ? 'green' : 'blue'), mn, mx, cur,
+          v => { S.tgt[k] = isGain ? v / 100 : v / 100; }, disabled,
+          v => isGain ? (v/100).toFixed(2) : (v > 0 ? '+' : '') + (v/100).toFixed(2)));
+      });
+      return sec;
+    };
+    body.appendChild(makeRGB('lift', t('lift')));
+    body.appendChild(makeRGB('gamma', t('gamma')));
+    body.appendChild(makeRGB('gainR', t('gain')));
+
+  } else if (S.activeTab === 'lut') {
+    const sec = makeSection('LUT');
+    const row = document.createElement('div'); row.className = 'chip-row';
+    Object.keys(LUTS).forEach(k => {
+      const ch = document.createElement('div');
+      ch.className = 'sel-chip' + (S.tgt.lut === k ? ' active' : '');
+      ch.textContent = t(k);
+      if (disabled) ch.style.opacity = '0.35';
+      ch.onclick = () => { if (disabled) return; S.tgt.lut = k; document.getElementById('ai-lut-name').textContent = t(k); buildManualPanel(); };
+      row.appendChild(ch);
+    });
+    sec.appendChild(row); body.appendChild(sec);
+  }
+}
+
+function makeSection(title) {
+  const div = document.createElement('div'); div.className = 'sl-group';
+  if (title) { const h = document.createElement('div'); h.className = 'sl-group-title'; h.textContent = title; div.appendChild(h); }
+  return div;
+}
+
+function makeSlider(id, label, min, max, val, onChange, disabled, fmt) {
+  const wrap = document.createElement('div'); wrap.className = 'sl-row';
+  const head = document.createElement('div'); head.className = 'sl-head';
+  const nm = document.createElement('div'); nm.className = 'sl-name'; nm.textContent = label;
+  const vl = document.createElement('div'); vl.className = 'sl-val'; vl.id = 'sv-' + id;
+  vl.textContent = fmt ? fmt(val) : val;
+  head.appendChild(nm); head.appendChild(vl);
+  const inp = document.createElement('input');
+  inp.type = 'range'; inp.min = min; inp.max = max; inp.value = val; inp.step = 0.1;
+  inp.disabled = disabled;
+  inp.oninput = () => { onChange(+inp.value); vl.textContent = fmt ? fmt(+inp.value) : Math.round(+inp.value); };
+  wrap.appendChild(head); wrap.appendChild(inp);
+  return wrap;
+}
+
+// Fix makeRGB for gain (gainR/gainG/gainB keys)
+// Override buildManualPanel grade section:
+function disableAI() {
+  S.mode = 'manual';
+  updateModeUI();
+  buildManualPanel();
+}
+
+function resetParams() {
+  const d = defaultParams();
+  Object.assign(S.tgt, d);
+  S.params = { iso: 800, shutterAngle: 180, fps: 24, temperature: 5600, tint: 0 };
+  updateTopChips();
+  buildManualPanel();
 }
 
 // ─── Settings ─────────────────────────────────────────────────────────────────
-document.getElementById('settings-btn').addEventListener('click', () => {
+function openSettings() {
   document.getElementById('api-field').value = S.apiKey;
-  document.getElementById('overlay').classList.add('show');
-});
-document.getElementById('overlay').addEventListener('click', e => {
-  if (e.target === document.getElementById('overlay'))
-    document.getElementById('overlay').classList.remove('show');
-});
+  document.getElementById('panel-settings').classList.add('show');
+}
+function closeSettings() { document.getElementById('panel-settings').classList.remove('show'); }
 function saveSettings() {
   S.apiKey = document.getElementById('api-field').value.trim();
   localStorage.setItem('ailens_key', S.apiKey);
-  document.getElementById('overlay').classList.remove('show');
-  if (S.apiKey) setTimeout(runAI, 400);
+  closeSettings();
+  if (S.apiKey && S.mode === 'ai') runAI();
 }
+
+// ─── Close overlays on backdrop tap ──────────────────────────────────────────
+document.getElementById('panel-manual').addEventListener('click', e => { if (e.target === document.getElementById('panel-manual')) closeManual(); });
+document.getElementById('panel-settings').addEventListener('click', e => { if (e.target === document.getElementById('panel-settings')) closeSettings(); });
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
 function toast(msg) {
@@ -660,24 +1004,18 @@ function toast(msg) {
 }
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
-// Check whether the server already has a key configured (Railway env).
-fetch('/api/config')
-  .then(r => r.json())
-  .then(cfg => {
-    S.hasServerKey = !!cfg.hasServerKey;
-    // Only prompt for a key if neither server nor user has one.
-    if (!S.hasServerKey && !S.apiKey) {
-      setTimeout(() => document.getElementById('overlay').classList.add('show'), 600);
-    }
-    if (S.hasServerKey) setTimeout(runAI, 1500);
-  })
-  .catch(() => {
-    if (!S.apiKey) setTimeout(() => document.getElementById('overlay').classList.add('show'), 600);
-  });
+buildLangScreen();
 
-navigator.mediaDevices?.getUserMedia({ video: true, audio: true })
-  .then(stream => { stream.getTracks().forEach(t => t.stop()); initCamera(); })
-  .catch(() => {});
+// Check server key
+fetch('/api/config').then(r => r.json()).then(cfg => {
+  S.hasServerKey = !!cfg.hasServerKey;
+}).catch(() => {});
+
+if (S.lang) {
+  showCamera();
+} else {
+  document.getElementById('screen-lang').classList.remove('hidden');
+}
 </script>
 </body>
 </html>
