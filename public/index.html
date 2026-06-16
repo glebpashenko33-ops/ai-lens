@@ -228,6 +228,18 @@
   <button onclick="initCamera()">Разрешить</button>
 </div>
 
+<!-- Per-channel Lift/Gamma/Gain color corrector (Blackmagic/Resolve Primaries model).
+     feFunc: output = amplitude * input^exponent + offset  →  amplitude=Gain, exponent~Gamma, offset=Lift -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="bmd-grade" color-interpolation-filters="sRGB">
+    <feComponentTransfer>
+      <feFuncR id="fnR" type="gamma" amplitude="1" exponent="1" offset="0"/>
+      <feFuncG id="fnG" type="gamma" amplitude="1" exponent="1" offset="0"/>
+      <feFuncB id="fnB" type="gamma" amplitude="1" exponent="1" offset="0"/>
+    </feComponentTransfer>
+  </filter>
+</svg>
+
 <div id="app">
   <video id="video" autoplay playsinline muted></video>
   <canvas id="fx-canvas"></canvas>
@@ -283,14 +295,16 @@
 </div>
 
 <script>
-// ─── LUT presets → CSS filter values ─────────────────────────────────────────
+// ─── LUT presets — base cinematic grade layered under the AI's per-shot params.
+// liftR/G/B = shadow tint (offset), gainR/G/B = highlight tint (multiplier),
+// contrast/saturate/hueRot = global tone. "teal&orange" = cool lifts + warm gains.
 const LUTS = {
-  natural:    { sepia: 0,    hueRot: 0,   saturate: 1.0 },
-  film:       { sepia: 0.08, hueRot: -3,  saturate: 0.88 },
-  cinematic:  { sepia: 0.04, hueRot: -6,  saturate: 1.25 },
-  portrait:   { sepia: 0.12, hueRot: 3,   saturate: 1.1  },
-  night:      { sepia: 0.06, hueRot: 5,   saturate: 0.75 },
-  golden:     { sepia: 0.22, hueRot: 8,   saturate: 1.4  },
+  natural:   { liftR: 0,     liftG: 0,     liftB: 0,     gainR: 1,    gainG: 1,    gainB: 1,    contrast: 1.0,  saturate: 1.0,  hueRot: 0 },
+  film:      { liftR: -0.01, liftG: 0,     liftB: 0.02,  gainR: 1.04, gainG: 1.0,  gainB: 0.97, contrast: 0.95, saturate: 0.9,  hueRot: -2 },
+  cinematic: { liftR: -0.02, liftG: 0,     liftB: 0.03,  gainR: 1.08, gainG: 1.0,  gainB: 0.94, contrast: 1.15, saturate: 1.2,  hueRot: -4 },
+  portrait:  { liftR: 0.01,  liftG: 0.005, liftB: 0,     gainR: 1.05, gainG: 1.0,  gainB: 0.98, contrast: 0.98, saturate: 1.08, hueRot: 2 },
+  night:     { liftR: 0,     liftG: 0.01,  liftB: 0.03,  gainR: 1.0,  gainG: 1.0,  gainB: 1.02, contrast: 1.05, saturate: 0.8,  hueRot: 4 },
+  golden:    { liftR: 0.02,  liftG: 0,     liftB: -0.01, gainR: 1.12, gainG: 1.02, gainB: 0.9,  contrast: 1.05, saturate: 1.25, hueRot: 6 },
 };
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -315,8 +329,11 @@ const S = {
 
 function defaultParams() {
   return {
-    exposure: 0, contrast: 1, saturation: 1, temperature: 0, tint: 0,
-    shadows: 0, highlights: 0, blacks: 0, whites: 0,
+    exposure: 0, temperature: 5600, tint: 0,
+    contrast: 1, pivot: 0.5, saturation: 1, hue: 0,
+    liftR: 0, liftG: 0, liftB: 0,
+    gammaR: 0, gammaG: 0, gammaB: 0,
+    gainR: 1, gainG: 1, gainB: 1,
     sharpness: 0.5, vignette: 0, filmGrain: 0, lut: 'natural',
   };
 }
@@ -463,20 +480,31 @@ function captureFrame() {
 }
 
 function applyAIParams(p) {
-  const clamp = (v, mn, mx) => Math.max(mn, Math.min(mx, v));
+  const cl = (v, mn, mx, def) => {
+    const n = (v === undefined || v === null || isNaN(+v)) ? def : +v;
+    return Math.max(mn, Math.min(mx, n));
+  };
+  const lift = p.lift || {}, gamma = p.gamma || {}, gain = p.gain || {};
   S.tgt = {
-    exposure:    clamp(+p.exposure    || 0,    -2,   2),
-    contrast:    clamp(+p.contrast    || 1,  0.5, 2.0),
-    saturation:  clamp(+p.saturation  || 1,    0, 2.5),
-    temperature: clamp(+p.temperature || 0, -100, 100),
-    tint:        clamp(+p.tint        || 0, -100, 100),
-    shadows:     clamp(+p.shadows     || 0,   -1,   1),
-    highlights:  clamp(+p.highlights  || 0,   -1,   1),
-    blacks:      clamp(+p.blacks      || 0,   -1,   1),
-    whites:      clamp(+p.whites      || 0,   -1,   1),
-    sharpness:   clamp(+p.sharpness   || 0.5,  0,   1),
-    vignette:    clamp(+p.vignette    || 0,    0,   1),
-    filmGrain:   clamp(+p.filmGrain   || 0,    0,   1),
+    exposure:    cl(p.exposure,    -2,    2,    0),
+    temperature: cl(p.temperature, 2500,  10000, 5600),
+    tint:        cl(p.tint,        -50,   50,   0),
+    contrast:    cl(p.contrast,    0,     2,    1),
+    pivot:       cl(p.pivot,       0.1,   0.9,  0.5),
+    saturation:  cl(p.saturation,  0,     2,    1),
+    hue:         cl(p.hue,         -1,    1,    0),
+    liftR:  cl(lift.r,  -0.2, 0.2, 0),
+    liftG:  cl(lift.g,  -0.2, 0.2, 0),
+    liftB:  cl(lift.b,  -0.2, 0.2, 0),
+    gammaR: cl(gamma.r, -0.5, 0.5, 0),
+    gammaG: cl(gamma.g, -0.5, 0.5, 0),
+    gammaB: cl(gamma.b, -0.5, 0.5, 0),
+    gainR:  cl(gain.r,  0.5,  2.0, 1),
+    gainG:  cl(gain.g,  0.5,  2.0, 1),
+    gainB:  cl(gain.b,  0.5,  2.0, 1),
+    sharpness:   cl(p.sharpness,   0,     1,    0.5),
+    vignette:    cl(p.vignette,    0,     1,    0),
+    filmGrain:   cl(p.filmGrain,   0,     1,    0),
     lut:         LUTS[p.lut] ? p.lut : 'natural',
   };
 }
@@ -492,69 +520,80 @@ const LERP_SPEED = 0.06; // per frame ~60fps → ~0.6s transition
 
 function lerp(a, b, t) { return a + (b - a) * t; }
 
+// Convert a Kelvin white-balance target into per-channel RGB multipliers.
+// Camera WB is inverse of scene light: low K (warm camera) boosts red, high K boosts blue.
+function kelvinToRGB(kelvin) {
+  // Normalize around 5600K neutral; positive = warmer camera comp, negative = cooler.
+  const d = (5600 - kelvin) / 5600; // >0 when kelvin<5600 (warm), <0 when cool
+  return {
+    r: 1 + d * 0.35,
+    g: 1 + d * 0.05,
+    b: 1 - d * 0.40,
+  };
+}
+
+const INTERP_KEYS = [
+  'exposure','temperature','tint','contrast','pivot','saturation','hue',
+  'liftR','liftG','liftB','gammaR','gammaG','gammaB','gainR','gainG','gainB',
+  'sharpness','vignette','filmGrain',
+];
+
 function startRenderLoop() {
   S.renderRunning = true;
   const video  = document.getElementById('video');
   const vign   = document.getElementById('vignette');
   const grain  = document.getElementById('grain');
   const gctx   = grain.getContext('2d');
+  const fnR = document.getElementById('fnR');
+  const fnG = document.getElementById('fnG');
+  const fnB = document.getElementById('fnB');
 
   let grainT = 0;
 
   function frame() {
     S.animFrame = requestAnimationFrame(frame);
 
-    // Interpolate all params smoothly
+    // Smoothly interpolate every numeric param toward target
     const c = S.cur, t = S.tgt;
-    for (const k of ['exposure','contrast','saturation','temperature','tint',
-                      'shadows','highlights','blacks','whites','sharpness','vignette','filmGrain']) {
-      c[k] = lerp(c[k], t[k], LERP_SPEED);
-    }
+    for (const k of INTERP_KEYS) c[k] = lerp(c[k], t[k], LERP_SPEED);
     if (c.lut !== t.lut) c.lut = t.lut; // snap lut instantly
 
-    // Build CSS filter for video
     const lut = LUTS[c.lut] || LUTS.natural;
 
-    // exposure → brightness (EV: 2^EV)
+    // ── White balance: Kelvin + tint → per-channel gain multipliers ──
+    const wb = kelvinToRGB(c.temperature);
+    const tintR = 1 + Math.max(0, c.tint) / 50 * 0.12;  // magenta adds R,B
+    const tintG = 1 - Math.abs(c.tint) / 50 * 0.10 * (c.tint > 0 ? 1 : -1); // sign flips for green
+    const tintB = 1 + Math.max(0, c.tint) / 50 * 0.12;
+
+    // ── Lift / Gamma / Gain → SVG feComponentTransfer (per channel) ──
+    // output = amplitude * input^exponent + offset  (amplitude=gain, exponent~gamma, offset=lift)
+    // Fold LUT base grade + white balance into the channel gains/lifts.
+    const setFunc = (fn, lift, gammaV, gain, wbMul, tintMul, lutLift, lutGain) => {
+      const amplitude = Math.max(0.05, gain * wbMul * tintMul * lutGain);
+      const exponent  = Math.max(0.2, Math.pow(2, -(gammaV + 0) ));      // gamma>0 → brighter mids
+      const offset    = lift + lutLift;
+      fn.setAttribute('amplitude', amplitude.toFixed(4));
+      fn.setAttribute('exponent',  exponent.toFixed(4));
+      fn.setAttribute('offset',    offset.toFixed(4));
+    };
+    setFunc(fnR, c.liftR, c.gammaR, c.gainR, wb.r, tintR, lut.liftR, lut.gainR);
+    setFunc(fnG, c.liftG, c.gammaG, c.gainG, wb.g, tintG, lut.liftG, lut.gainG);
+    setFunc(fnB, c.liftB, c.gammaB, c.gainB, wb.b, tintB, lut.liftB, lut.gainB);
+
+    // ── Global tone via CSS filter (chained after the SVG grade) ──
     const brightness = Math.pow(2, c.exposure);
-    // temperature → hue-rotate proxy + sepia blend
-    const tempHue = c.temperature * 0.25;         // warm = +hue, cool = -hue
-    const tempSepia = Math.max(0, c.temperature) / 800; // subtle sepia for warmth
-    const tintHue = c.tint * 0.15;
+    const contrast   = c.contrast * lut.contrast;
+    const sat        = c.saturation * lut.saturate;
+    const hueDeg     = c.hue * 30 + lut.hueRot;
 
-    // shadows/highlights affect brightness via proxy
-    const shadowBoost = 1 + c.shadows * 0.3;
-    const highlightCut = 1 + c.highlights * 0.15;
-    const brightnessTotal = brightness * shadowBoost * highlightCut;
-
-    // whites/blacks via contrast proxy
-    const blacksContrast = c.contrast * (1 + c.blacks * 0.2);
-    const whitesContrast = blacksContrast * (1 + c.whites * 0.15);
-
-    // saturation: combine param + lut
-    const sat = c.saturation * lut.saturate;
-
-    // sepia: combine lut + temp warmth
-    const sepia = Math.min(1, lut.sepia + tempSepia);
-
-    // hue-rotate: lut + temp + tint
-    const hue = lut.hueRot + tempHue + tintHue;
-
-    const filter = [
-      `brightness(${brightnessTotal.toFixed(3)})`,
-      `contrast(${whitesContrast.toFixed(3)})`,
+    video.style.filter = [
+      'url(#bmd-grade)',
+      `brightness(${brightness.toFixed(3)})`,
+      `contrast(${contrast.toFixed(3)})`,
       `saturate(${sat.toFixed(3)})`,
-      sepia > 0.001 ? `sepia(${sepia.toFixed(3)})` : '',
-      Math.abs(hue) > 0.1 ? `hue-rotate(${hue.toFixed(1)}deg)` : '',
+      Math.abs(hueDeg) > 0.1 ? `hue-rotate(${hueDeg.toFixed(1)}deg)` : '',
     ].filter(Boolean).join(' ');
-
-    video.style.filter = filter;
-
-    // Cool color channel: add subtle blue overlay for negative temperature
-    const coolness = Math.max(0, -c.temperature) / 200;
-    if (coolness > 0.01) {
-      video.style.setProperty('--cool', coolness);
-    }
 
     // Vignette
     const v = c.vignette;
