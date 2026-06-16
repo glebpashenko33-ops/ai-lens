@@ -113,7 +113,7 @@
     /* Controls */
     .controls {
       display: flex; align-items: center; justify-content: center;
-      gap: 52px;
+      gap: 64px;
       padding-bottom: calc(env(safe-area-inset-bottom, 28px) + 28px);
       padding-top: 10px;
       pointer-events: auto; position: relative;
@@ -155,21 +155,6 @@
     }
     .flip-btn:active { background: rgba(255,255,255,0.25); }
     .flip-btn.spinning { transform: rotate(180deg); }
-
-    /* Download button — appears after stop */
-    .dl-btn {
-      width: 50px; height: 50px; border-radius: 50%;
-      background: rgba(255,255,255,0.12);
-      border: 1px solid rgba(255,255,255,0.15);
-      color: #fff; font-size: 18px; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      backdrop-filter: blur(20px);
-      opacity: 0; pointer-events: none;
-      transition: opacity 0.3s, background 0.2s;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .dl-btn.show { opacity: 1; pointer-events: auto; }
-    .dl-btn:active { background: rgba(255,255,255,0.25); }
 
     /* Toast */
     .toast {
@@ -269,7 +254,6 @@
 
     <!-- Controls -->
     <div class="controls">
-      <button class="dl-btn" id="dl-btn" onclick="downloadVideo()" title="Скачать">⬇</button>
       <div class="rec-btn" id="rec-btn" onclick="toggleRecord()">
         <div class="rec-ring"></div>
         <div class="rec-inner"></div>
@@ -380,15 +364,13 @@ function startRecord() {
   S.recorder.ondataavailable = e => { if (e.data?.size) S.chunks.push(e.data); };
   S.recorder.onstop = () => {
     S.lastBlob = new Blob(S.chunks, { type: S.recorder.mimeType });
-    document.getElementById('dl-btn').classList.add('show');
-    toast('✓ Видео готово');
+    saveVideo();
   };
   S.recorder.start(1000);
   S.isRecording = true;
   S.recStart = Date.now();
   document.getElementById('rec-btn').classList.add('recording');
   document.getElementById('rec-timer').classList.add('show');
-  document.getElementById('dl-btn').classList.remove('show');
 
   S.recTick = setInterval(() => {
     const s = Math.floor((Date.now() - S.recStart) / 1000);
@@ -404,13 +386,29 @@ function stopRecord() {
   document.getElementById('rec-timer').classList.remove('show');
 }
 
-function downloadVideo() {
+async function saveVideo() {
   if (!S.lastBlob) return;
   const ext = S.lastBlob.type.includes('mp4') ? 'mp4' : 'webm';
+  const fileName = `ailens-${Date.now()}.${ext}`;
+
+  // 1) Native share/save sheet (lets user save to gallery on mobile)
+  try {
+    const file = new File([S.lastBlob], fileName, { type: S.lastBlob.type });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: 'AI Lens' });
+      toast('✓ Видео сохранено');
+      return;
+    }
+  } catch (e) {
+    if (e.name === 'AbortError') return; // user cancelled share sheet
+  }
+
+  // 2) Fallback — auto download to device
   const url = URL.createObjectURL(S.lastBlob);
   const a = document.createElement('a');
-  a.href = url; a.download = `ailens-${Date.now()}.${ext}`; a.click();
+  a.href = url; a.download = fileName; a.click();
   setTimeout(() => URL.revokeObjectURL(url), 5000);
+  toast('✓ Видео сохранено');
 }
 
 // ─── AI Analysis ─────────────────────────────────────────────────────────────
