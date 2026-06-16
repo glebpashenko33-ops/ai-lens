@@ -40,10 +40,10 @@
 
     /* ── Top bar ── */
     #top-bar { position: absolute; top: 0; left: 0; right: 0; padding: calc(env(safe-area-inset-top,20px) + 52px) 14px 0; display: flex; align-items: center; justify-content: space-between; z-index: 10; }
-    .status-chips { display: flex; gap: 5px; flex-wrap: nowrap; align-items: center; }
-    .chip { background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.14); border-radius: 6px; padding: 4px 8px; font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.82); letter-spacing: 0.3px; font-variant-numeric: tabular-nums; backdrop-filter: blur(8px); }
-    .top-btn { width: 34px; height: 34px; border-radius: 50%; background: rgba(0,0,0,0.45); border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.7); font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(20px); transition: background 0.2s; }
-    .top-btn:active { background: rgba(255,255,255,0.22); }
+    .status-chips { display: flex; gap: 6px; flex-wrap: nowrap; align-items: center; }
+    .chip { background: rgba(14,15,17,0.72); border: 1px solid rgba(255,255,255,0.07); border-radius: 5px; padding: 5px 9px; font-size: 11px; font-weight: 700; color: #f5b942; letter-spacing: 0.4px; font-variant-numeric: tabular-nums; backdrop-filter: blur(10px); box-shadow: 0 1px 7px rgba(0,0,0,0.45); }
+    .top-btn { width: 36px; height: 36px; border-radius: 9px; background: rgba(14,15,17,0.72); border: 1px solid rgba(255,255,255,0.07); color: rgba(255,255,255,0.72); font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(20px); transition: background 0.2s; box-shadow: 0 1px 7px rgba(0,0,0,0.45); }
+    .top-btn:active { background: rgba(255,255,255,0.18); }
 
     /* ── AI strip ── */
     #ai-strip { position: absolute; top: calc(env(safe-area-inset-top,20px) + 108px); left: 0; right: 0; padding: 2px 18px; display: flex; align-items: center; justify-content: space-between; z-index: 10; }
@@ -55,40 +55,44 @@
     #ai-lut-name { font-size: 10px; color: rgba(255,255,255,0.28); letter-spacing: 0.5px; }
 
     /* ── REC badge ── */
-    #rec-badge { position: absolute; top: calc(env(safe-area-inset-top,20px) + 60px); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; z-index: 11; }
-    .rec-dot { width: 7px; height: 7px; border-radius: 50%; background: #ff3b30; animation: blink 1s ease-in-out infinite; }
-    .rec-tc { font-size: 13px; font-weight: 600; color: #fff; font-variant-numeric: tabular-nums; letter-spacing: 1px; }
+    #rec-badge { position: absolute; top: calc(env(safe-area-inset-top,20px) + 58px); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 7px; z-index: 11; background: rgba(14,15,17,0.72); border: 1px solid rgba(255,59,48,0.35); border-radius: 7px; padding: 5px 11px; backdrop-filter: blur(10px); box-shadow: 0 1px 8px rgba(0,0,0,0.5); }
+    .rec-dot { width: 8px; height: 8px; border-radius: 50%; background: #ff3b30; box-shadow: 0 0 6px #ff3b30; animation: blink 1s ease-in-out infinite; }
+    .rec-tc { font-size: 13px; font-weight: 700; color: #fff; font-variant-numeric: tabular-nums; letter-spacing: 1.2px; }
 
     /* ── Histogram ── */
     #histogram-widget { position: absolute; left: 12px; bottom: calc(env(safe-area-inset-bottom,24px) + 210px); background: rgba(0,0,0,0.58); border-radius: 8px; overflow: hidden; z-index: 9; display: none; border: 1px solid rgba(255,255,255,0.08); }
     #histogram-widget.show { display: block; }
 
-    /* ── Bottom area ── */
-    #bottom-area { position: absolute; bottom: 0; left: 0; right: 0; z-index: 10; padding-bottom: calc(env(safe-area-inset-bottom,24px) + 10px); }
-    #ai-progress-track { height: 1.5px; background: rgba(255,255,255,0.1); }
-    #ai-progress-fill { height: 100%; background: rgba(255,255,255,0.38); transition: width 0.3s linear; width: 0%; }
+    /* ── Bottom area — cinema control deck ── */
+    #bottom-area { position: absolute; bottom: 0; left: 0; right: 0; z-index: 10; padding-bottom: calc(env(safe-area-inset-bottom,24px) + 12px);
+      background: linear-gradient(to top, rgba(12,13,15,0.92) 0%, rgba(12,13,15,0.78) 55%, transparent 100%);
+      border-top: 1px solid rgba(255,255,255,0.05); border-radius: 20px 20px 0 0; backdrop-filter: blur(14px); }
+    #ai-progress-track { height: 2px; background: rgba(255,255,255,0.08); border-radius: 2px; margin: 0 20px; }
+    #ai-progress-fill { height: 100%; background: linear-gradient(90deg,#f5b942,#ff9f0a); border-radius: 2px; transition: width 0.3s linear; width: 0%; box-shadow: 0 0 8px rgba(245,185,66,0.5); }
 
-    #controls-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 28px 0; }
-    .overlay-toggles { display: flex; flex-direction: column; gap: 5px; }
-    .toggle-row { display: flex; gap: 5px; }
-    .ov-btn { width: 30px; height: 30px; border-radius: 8px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.45); font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.18s; }
-    .ov-btn.active { background: rgba(255,255,255,0.85); color: #000; border-color: transparent; }
+    #controls-row { display: flex; align-items: center; justify-content: space-between; padding: 18px 26px 0; }
+    .overlay-toggles { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .ov-btn { width: 33px; height: 33px; border-radius: 9px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.5); font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.18s; }
+    .ov-btn.active { background: #f5b942; color: #1a1208; border-color: transparent; box-shadow: 0 0 12px rgba(245,185,66,0.35); }
 
-    .rec-btn { width: 58px; height: 58px; border-radius: 50%; position: relative; cursor: pointer; flex-shrink: 0; }
-    .rec-ring { position: absolute; inset: 0; border-radius: 50%; border: 2.5px solid rgba(255,255,255,0.85); }
-    .rec-inner { position: absolute; inset: 6px; border-radius: 50%; background: #ff3b30; transition: border-radius 0.22s cubic-bezier(.4,0,.2,1), inset 0.22s cubic-bezier(.4,0,.2,1); }
-    .rec-btn.recording .rec-inner { inset: 16px; border-radius: 4px; }
+    .rec-btn { width: 66px; height: 66px; border-radius: 50%; position: relative; cursor: pointer; flex-shrink: 0; }
+    .rec-ring { position: absolute; inset: 0; border-radius: 50%; border: 3px solid rgba(255,255,255,0.9); box-shadow: 0 2px 12px rgba(0,0,0,0.5); }
+    .rec-inner { position: absolute; inset: 6px; border-radius: 50%; background: linear-gradient(160deg,#ff5b50,#e0271c); transition: border-radius 0.22s cubic-bezier(.4,0,.2,1), inset 0.22s cubic-bezier(.4,0,.2,1); }
+    .rec-btn.recording .rec-inner { inset: 18px; border-radius: 5px; }
     .rec-btn.recording { animation: pulse-rec 1.1s ease-in-out infinite; }
+    .rec-btn:active .rec-inner { inset: 9px; }
 
-    .flip-btn { width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(20px); transition: transform 0.38s cubic-bezier(.4,0,.2,1), background 0.2s; }
-    .flip-btn:active { background: rgba(255,255,255,0.22); }
+    .flip-btn { width: 48px; height: 48px; border-radius: 13px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(20px); transition: transform 0.38s cubic-bezier(.4,0,.2,1), background 0.2s; }
+    .flip-btn:active { background: rgba(255,255,255,0.2); }
     .flip-btn.spinning { transform: rotate(180deg); }
 
-    #mode-row { display: flex; align-items: center; gap: 10px; padding: 10px 28px 0; }
-    .mode-btn { flex: 1; height: 36px; border-radius: 10px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.6); font-size: 11px; font-weight: 700; letter-spacing: 0.8px; cursor: pointer; backdrop-filter: blur(20px); transition: all 0.2s; font-family: inherit; }
+    #mode-row { display: flex; align-items: center; gap: 0; padding: 14px 26px 0; background: none; }
+    #mode-seg { display: flex; width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 3px; gap: 3px; }
+    .mode-btn { flex: 1; height: 38px; border-radius: 9px; background: transparent; border: none; color: rgba(255,255,255,0.5); font-size: 11px; font-weight: 700; letter-spacing: 1px; cursor: pointer; transition: all 0.2s; font-family: inherit; text-transform: uppercase; }
     .mode-btn:active { opacity: 0.75; }
-    #ai-mode-btn { color: rgba(255,255,255,0.35); }
-    #ai-mode-btn.active { background: rgba(48,209,88,0.14); border-color: rgba(48,209,88,0.4); color: #30d158; box-shadow: 0 0 14px rgba(48,209,88,0.12); }
+    #manual-btn.active { background: rgba(255,255,255,0.92); color: #111; }
+    #ai-mode-btn { color: rgba(255,255,255,0.4); }
+    #ai-mode-btn.active { background: linear-gradient(160deg,#3ddc6a,#23b14e); color: #062b13; box-shadow: 0 0 16px rgba(48,209,88,0.25); }
 
     /* ── Toast ── */
     #toast { position: absolute; bottom: calc(env(safe-area-inset-bottom,24px) + 140px); left: 50%; transform: translateX(-50%) translateY(10px); background: rgba(0,0,0,0.72); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.1); border-radius: 22px; padding: 9px 20px; font-size: 13px; color: rgba(255,255,255,0.9); opacity: 0; transition: opacity 0.25s, transform 0.25s; pointer-events: none; white-space: nowrap; z-index: 20; }
@@ -243,14 +247,10 @@
     <div id="controls-row">
       <!-- Overlay toggles -->
       <div class="overlay-toggles">
-        <div class="toggle-row">
-          <button class="ov-btn" id="btn-grid" onclick="toggleOverlay('grid')" title="Grid">⊞</button>
-          <button class="ov-btn" id="btn-zebra" onclick="toggleOverlay('zebra')" title="Zebra">◨</button>
-        </div>
-        <div class="toggle-row">
-          <button class="ov-btn" id="btn-peaking" onclick="toggleOverlay('peaking')" title="Peaking">◈</button>
-          <button class="ov-btn" id="btn-histogram" onclick="toggleOverlay('histogram')" title="Histogram">▦</button>
-        </div>
+        <button class="ov-btn" id="btn-grid" onclick="toggleOverlay('grid')" title="Grid">⊞</button>
+        <button class="ov-btn" id="btn-zebra" onclick="toggleOverlay('zebra')" title="Zebra">◨</button>
+        <button class="ov-btn" id="btn-peaking" onclick="toggleOverlay('peaking')" title="Peaking">◈</button>
+        <button class="ov-btn" id="btn-histogram" onclick="toggleOverlay('histogram')" title="Histogram">▦</button>
       </div>
 
       <!-- Record button -->
@@ -269,8 +269,10 @@
     </div>
 
     <div id="mode-row">
-      <button class="mode-btn" id="manual-btn" onclick="openManual()" data-t="manual">MANUAL</button>
-      <button class="mode-btn" id="ai-mode-btn" onclick="toggleAIMode()" data-t="aiAuto">AI AUTO</button>
+      <div id="mode-seg">
+        <button class="mode-btn" id="manual-btn" onclick="openManual()" data-t="manual">MANUAL</button>
+        <button class="mode-btn" id="ai-mode-btn" onclick="toggleAIMode()" data-t="aiAuto">AI AUTO</button>
+      </div>
     </div>
   </div>
 
@@ -559,7 +561,9 @@ function enableAI() {
 
 function updateModeUI() {
   const aiBtn = document.getElementById('ai-mode-btn');
+  const manualBtn = document.getElementById('manual-btn');
   aiBtn.classList.toggle('active', S.mode === 'ai');
+  manualBtn.classList.toggle('active', S.mode === 'manual');
   aiBtn.textContent = S.mode === 'ai' ? t('aiAuto') : t('aiOff');
 }
 
