@@ -30,7 +30,8 @@
 
     /* ── Camera screen ── */
     #screen-camera { background: #000; }
-    #video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    #video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; pointer-events: none; }
+    #video-canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
     /* Raw (ungraded) feed for split before/after — clipped to left half, shown on demand */
     #video-raw { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 2; display: none; clip-path: inset(0 50% 0 0); }
     #video-raw.show { display: block; }
@@ -41,7 +42,6 @@
     .split-before { left: 14px; }
     .split-after { right: 14px; }
     #canvas-overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; }
-    #vignette { position: absolute; inset: 0; pointer-events: none; z-index: 4; }
     #grain { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 4; opacity: 0; mix-blend-mode: overlay; }
 
     #grid-overlay { position: absolute; inset: 0; z-index: 5; pointer-events: none; }
@@ -301,17 +301,6 @@
 </head>
 <body>
 
-<!-- SVG color grading filter — Blackmagic-style Lift/Gamma/Gain per channel -->
-<svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <filter id="bmd-grade" color-interpolation-filters="sRGB">
-    <feComponentTransfer>
-      <feFuncR id="fnR" type="gamma" amplitude="1" exponent="1" offset="0"/>
-      <feFuncG id="fnG" type="gamma" amplitude="1" exponent="1" offset="0"/>
-      <feFuncB id="fnB" type="gamma" amplitude="1" exponent="1" offset="0"/>
-    </feComponentTransfer>
-  </filter>
-</svg>
-
 <!-- SCREEN: Language picker -->
 <div id="screen-lang" class="screen">
   <div class="lang-title">AI Lens</div>
@@ -328,6 +317,7 @@
 <!-- SCREEN: Camera -->
 <div id="screen-camera" class="screen hidden">
   <video id="video" autoplay playsinline muted></video>
+  <canvas id="video-canvas"></canvas>
   <video id="video-raw" autoplay playsinline muted></video>
   <div id="split-ui" class="hidden">
     <div class="split-divider"></div>
@@ -335,7 +325,6 @@
     <div class="split-label split-after" id="split-after">AFTER</div>
   </div>
   <canvas id="canvas-overlay"></canvas>
-  <div id="vignette"></div>
   <canvas id="grain"></canvas>
 
   <!-- Grid overlay -->
@@ -917,9 +906,16 @@ function toggleRecord() { S.isRecording ? stopRecord() : startRecord(); }
 function startRecord() {
   if (!S.stream) return;
   S.chunks = [];
+  // Record the graded canvas (what's actually on screen), not the raw camera
+  // stream — otherwise the saved clip never matches the live, color-graded preview.
+  const vc = document.getElementById('video-canvas');
+  const gradedStream = vc.captureStream ? vc.captureStream(S.params.fps || 30) : null;
+  const recordStream = gradedStream
+    ? new MediaStream([...gradedStream.getVideoTracks(), ...S.stream.getAudioTracks()])
+    : S.stream;
   const mime = ['video/mp4;codecs=h264','video/mp4','video/webm;codecs=vp9','video/webm'].find(m => MediaRecorder.isTypeSupported(m)) || '';
-  try { S.recorder = new MediaRecorder(S.stream, mime ? { mimeType: mime } : {}); }
-  catch { S.recorder = new MediaRecorder(S.stream); }
+  try { S.recorder = new MediaRecorder(recordStream, mime ? { mimeType: mime } : {}); }
+  catch { S.recorder = new MediaRecorder(recordStream); }
   S.recorder.ondataavailable = e => { if (e.data?.size) S.chunks.push(e.data); };
   S.recorder.onstop = () => {
     S.lastBlob = new Blob(S.chunks, { type: S.recorder.mimeType });
@@ -938,11 +934,11 @@ function stopRecord() {
   // Capture thumbnail + duration before the stream is touched.
   S.lastDuration = Date.now() - (S.recStart || Date.now());
   try {
-    const v = document.getElementById('video');
-    if (v.videoWidth) {
+    const vc = document.getElementById('video-canvas');
+    if (vc.width) {
       const tc = document.createElement('canvas');
       tc.width = 160; tc.height = 90;
-      tc.getContext('2d').drawImage(v, 0, 0, 160, 90);
+      tc.getContext('2d').drawImage(vc, 0, 0, 160, 90);
       S.lastThumb = tc.toDataURL('image/jpeg', 0.6);
     }
   } catch { S.lastThumb = ''; }
@@ -1330,15 +1326,26 @@ function kelvinToRGB(k) {
   return { r: 1 + d * 0.35, g: 1 + d * 0.05, b: 1 - d * 0.40 };
 }
 
+// Builds a 256-entry lookup table for one channel's Lift/Gamma/Gain (feFuncR-style gamma transfer),
+// so the per-pixel pass below is a plain array lookup instead of a pow() call per pixel.
+function buildChannelLUT(lift, gv, gain, wbM, tM, lLift, lGain) {
+  const amp = Math.max(0.05, gain * wbM * tM * lGain);
+  const exp = Math.max(0.15, Math.pow(2, -gv));
+  const off = lift + lLift;
+  const lut = new Uint8ClampedArray(256);
+  for (let i = 0; i < 256; i++) {
+    lut[i] = Math.round(255 * (amp * Math.pow(i / 255, exp) + off));
+  }
+  return lut;
+}
+
 function startRenderLoop() {
   S.renderRunning = true;
   const video = document.getElementById('video');
-  const vign  = document.getElementById('vignette');
+  const vc    = document.getElementById('video-canvas');
+  const vctx  = vc.getContext('2d', { willReadFrequently: true });
   const grain = document.getElementById('grain');
   const gctx  = grain.getContext('2d');
-  const fnR   = document.getElementById('fnR');
-  const fnG   = document.getElementById('fnG');
-  const fnB   = document.getElementById('fnB');
   const ovCanvas = document.getElementById('canvas-overlay');
   const ovCtx    = ovCanvas.getContext('2d');
   let grainT = 0;
@@ -1358,33 +1365,51 @@ function startRenderLoop() {
     const tG = 1 - Math.abs(tintFactor) * 0.08;
     const tB = 1 + Math.max(0, tintFactor) * 0.12;
 
-    const setFn = (fn, lift, gv, gain, wbM, tM, lLift, lGain) => {
-      const amp = Math.max(0.05, gain * wbM * tM * lGain);
-      const exp = Math.max(0.15, Math.pow(2, -gv));
-      const off = lift + lLift;
-      fn.setAttribute('amplitude', amp.toFixed(4));
-      fn.setAttribute('exponent',  exp.toFixed(4));
-      fn.setAttribute('offset',    off.toFixed(4));
-    };
-    setFn(fnR, c.liftR, c.gammaR, c.gainR, wb.r, tR, lut.liftR, lut.gainR);
-    setFn(fnG, c.liftG, c.gammaG, c.gainG, wb.g, tG, lut.liftG, lut.gainG);
-    setFn(fnB, c.liftB, c.gammaB, c.gainB, wb.b, tB, lut.liftB, lut.gainB);
+    // Render the actual graded pixels into video-canvas — this is both what's
+    // shown on screen AND what gets captured for recording, so preview and
+    // saved video can never drift apart (and it sidesteps Safari's flaky
+    // support for CSS/SVG filters on <video>).
+    if (video.videoWidth) {
+      const maxW = 1280;
+      const scale = Math.min(1, maxW / video.videoWidth);
+      const tw = Math.max(2, Math.round(video.videoWidth * scale));
+      const th = Math.max(2, Math.round(video.videoHeight * scale));
+      if (vc.width !== tw || vc.height !== th) { vc.width = tw; vc.height = th; }
 
-    const brightness = Math.pow(2, c.exposure);
-    const hueDeg = c.hue * 30 + lut.hueRot;
-    video.style.filter = [
-      'url(#bmd-grade)',
-      'brightness(' + brightness.toFixed(3) + ')',
-      'contrast(' + (c.contrast * lut.contrast).toFixed(3) + ')',
-      'saturate(' + (c.saturation * lut.saturate).toFixed(3) + ')',
-      Math.abs(hueDeg) > 0.1 ? 'hue-rotate(' + hueDeg.toFixed(1) + 'deg)' : '',
-    ].filter(Boolean).join(' ');
+      const brightness = Math.pow(2, c.exposure);
+      const hueDeg = c.hue * 30 + lut.hueRot;
+      vctx.filter = [
+        'brightness(' + brightness.toFixed(3) + ')',
+        'contrast(' + (c.contrast * lut.contrast).toFixed(3) + ')',
+        'saturate(' + (c.saturation * lut.saturate).toFixed(3) + ')',
+        Math.abs(hueDeg) > 0.1 ? 'hue-rotate(' + hueDeg.toFixed(1) + 'deg)' : '',
+      ].filter(Boolean).join(' ') || 'none';
+      vctx.drawImage(video, 0, 0, vc.width, vc.height);
+      vctx.filter = 'none';
 
-    // Vignette
-    if (c.vignette > 0.01) {
-      const stop = Math.round((1 - c.vignette * 0.5) * 100);
-      vign.style.background = 'radial-gradient(ellipse at center, transparent ' + stop + '%, rgba(0,0,0,' + (c.vignette * 0.85).toFixed(2) + ') 100%)';
-    } else { vign.style.background = 'none'; }
+      const lutR = buildChannelLUT(c.liftR, c.gammaR, c.gainR, wb.r, tR, lut.liftR, lut.gainR);
+      const lutG = buildChannelLUT(c.liftG, c.gammaG, c.gainG, wb.g, tG, lut.liftG, lut.gainG);
+      const lutB = buildChannelLUT(c.liftB, c.gammaB, c.gainB, wb.b, tB, lut.liftB, lut.gainB);
+      const imgData = vctx.getImageData(0, 0, vc.width, vc.height);
+      const px = imgData.data;
+      const doVign = c.vignette > 0.01;
+      const cx = vc.width / 2, cy = vc.height / 2, maxDist = Math.sqrt(cx * cx + cy * cy);
+      const edge = 1 - c.vignette * 0.5, dark = c.vignette * 0.85;
+      for (let i = 0, p = 0; i < px.length; i += 4, p++) {
+        px[i]   = lutR[px[i]];
+        px[i+1] = lutG[px[i+1]];
+        px[i+2] = lutB[px[i+2]];
+        if (doVign) {
+          const x = p % vc.width, y = (p / vc.width) | 0;
+          const dist = Math.sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy)) / maxDist;
+          if (dist > edge) {
+            const f = 1 - Math.min(1, (dist - edge) / (1 - edge)) * dark;
+            px[i] *= f; px[i+1] *= f; px[i+2] *= f;
+          }
+        }
+      }
+      vctx.putImageData(imgData, 0, 0);
+    }
 
     // Film grain
     if (c.filmGrain > 0.01) {
