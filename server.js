@@ -1,10 +1,44 @@
 const express = require('express');
 const path = require('path');
 const os = require('os');
+const Anthropic = require('@anthropic-ai/sdk');
 
 const app = express();
+app.set('trust proxy', 1); // Railway runs behind a proxy → real client IP in req.ip
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json({ limit: '25mb' }));
+
+// ─── Abuse protection for the SHARED server key ───────────────────────────────
+// Only applied when requests use OUR key (your Anthropic balance). Users who
+// bring their own key via x-api-key are not limited (their own cost).
+const PER_IP_MAX    = parseInt(process.env.RATE_PER_IP   || '10', 10); // requests / window
+const PER_IP_WINDOW = parseInt(process.env.RATE_WINDOW   || '60', 10) * 1000; // seconds → ms
+const DAILY_MAX     = parseInt(process.env.RATE_DAILY    || '3000', 10); // total / day
+const ipHits = new Map();
+let dayKey = new Date().toDateString();
+let dayCount = 0;
+
+function checkRateLimit(ip) {
+  const today = new Date().toDateString();
+  if (today !== dayKey) { dayKey = today; dayCount = 0; }
+  if (dayCount >= DAILY_MAX) return { ok: false, code: 'daily_limit' };
+
+  const now = Date.now();
+  const arr = (ipHits.get(ip) || []).filter(t => now - t < PER_IP_WINDOW);
+  if (arr.length >= PER_IP_MAX) return { ok: false, code: 'rate_limit' };
+  arr.push(now);
+  ipHits.set(ip, arr);
+  dayCount++;
+  return { ok: true };
+}
+// Periodically clear stale IP buckets to keep memory bounded.
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, arr] of ipHits) {
+    const live = arr.filter(t => now - t < PER_IP_WINDOW);
+    if (live.length) ipHits.set(ip, live); else ipHits.delete(ip);
+  }
+}, PER_IP_WINDOW).unref();
 
 // ─── Config: tells the client whether a server-side key is available ─────────
 app.get('/api/config', (req, res) => {
@@ -15,11 +49,18 @@ app.get('/api/config', (req, res) => {
 app.post('/api/analyze', async (req, res) => {
   const { imageBase64, lang } = req.body;
   // Prefer server-side key (Railway env), fall back to user-provided key
+  const usingServerKey = !!process.env.ANTHROPIC_API_KEY;
   const apiKey = process.env.ANTHROPIC_API_KEY || req.headers['x-api-key'];
 
   if (!apiKey) return res.status(401).json({ error: 'no_key' });
+  if (!imageBase64) return res.status(400).json({ error: 'no_image' });
 
-  const Anthropic = require('@anthropic-ai/sdk');
+  // Only rate-limit the shared key (your money). BYO-key users pass through.
+  if (usingServerKey) {
+    const rl = checkRateLimit(req.ip);
+    if (!rl.ok) return res.status(429).json({ error: rl.code });
+  }
+
   const client = new Anthropic({ apiKey });
 
   const LANGS = {
@@ -129,7 +170,7 @@ app.post('/api/analyze', async (req, res) => {
     }
   } catch (err) {
     console.error('Claude error:', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'ai_error' });
   }
 });
 

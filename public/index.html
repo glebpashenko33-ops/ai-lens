@@ -2,10 +2,15 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#000000">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0b0d">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="AI Lens">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="icon" type="image/png" href="icon-192.png">
   <title>AI Lens</title>
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -558,10 +563,10 @@
 const T = {
   en: { chooseLanguage:'Choose your language', aiAuto:'AI AUTO', aiOff:'AI OFF', aiControlling:'AI is controlling', takeManual:'Take manual control', letAI:'Let AI take over', manual:'MANUAL', settings:'Settings', save:'Save', reset:'Reset', exposure:'Exposure', whiteBalance:'White Balance', color:'Color', grade:'Grade', lut:'LUT', iso:'ISO', shutter:'Shutter', frameRate:'Frame Rate', temperature:'Temperature', tint:'Tint', saturation:'Saturation', contrast:'Contrast', pivot:'Pivot', lift:'Lift', gamma:'Gamma', gain:'Gain', natural:'Natural', film:'Film', cinematic:'Cinematic', portrait:'Portrait', night:'Night', golden:'Golden', videoSaved:'✓ Video saved', camUnavailable:'Camera unavailable', apiKey:'Anthropic API Key', apiHint:'Get key: console.anthropic.com', vignette:'Vignette', filmGrain:'Film Grain', hue:'Hue', red:'R', green:'G', blue:'B', scenarios:'Scenarios', scNight:'Night Street', scPortrait:'Portrait', scGolden:'Golden Hour', scInterview:'Interview', scFood:'Food', scBlog:'Home Vlog', scApplied:'applied',
     homeGreeting:'Hello, creator!', homeSub:'What are we filming today?', qsBadge:'Quick start', qsTitle:'AI Camera Operator', qsDesc:'Open the camera and let AI tune the cinematic look automatically.', qsBtn:'Open camera', tipsH:'Useful', seeAll:'See all', presetsSub:'Ready-made professional setups', learnTitle:'Learn', learnSub:'Short guides to shoot better', profileTitle:'Profile', profileSub:'Settings & preferences', langLabel:'Language', tabHome:'Home', tabPresets:'Presets', tabLearn:'Learn', tabProfile:'Profile',
-    tipShakyT:'Why is video shaky?', tipShakyD:'5 tips for smoother footage', tipExpoT:'How to set exposure', tipExpoD:'Keep the histogram in range', tipLogT:'Why shoot in Log', tipLogD:'More dynamic range to grade', tipFpsT:'How to choose FPS', tipFpsD:'24 for cinema, 60 for slow-mo', tipBokehT:'How to blur the background', tipBokehD:'Distance, light and lens choice', expoOk:'Exposure OK', expoBright:'Too bright', expoDark:'Too dark', before:'BEFORE', after:'AFTER', historyH:'Recordings', noClips:'No recordings yet', download:'Download', deleteClip:'Delete' },
+    tipShakyT:'Why is video shaky?', tipShakyD:'5 tips for smoother footage', tipExpoT:'How to set exposure', tipExpoD:'Keep the histogram in range', tipLogT:'Why shoot in Log', tipLogD:'More dynamic range to grade', tipFpsT:'How to choose FPS', tipFpsD:'24 for cinema, 60 for slow-mo', tipBokehT:'How to blur the background', tipBokehD:'Distance, light and lens choice', expoOk:'Exposure OK', expoBright:'Too bright', expoDark:'Too dark', before:'BEFORE', after:'AFTER', historyH:'Recordings', noClips:'No recordings yet', download:'Download', deleteClip:'Delete', aiBusy:'AI is busy, pausing briefly' },
   ru: { chooseLanguage:'Выберите язык', aiAuto:'ИИ АВТО', aiOff:'ИИ ВЫКЛ', aiControlling:'ИИ управляет', takeManual:'Взять управление', letAI:'Доверить ИИ', manual:'РУЧНОЙ', settings:'Настройки', save:'Сохранить', reset:'Сбросить', exposure:'Экспозиция', whiteBalance:'Баланс белого', color:'Цвет', grade:'Грейдинг', lut:'LUT', iso:'ISO', shutter:'Затвор', frameRate:'Частота кадров', temperature:'Температура', tint:'Оттенок', saturation:'Насыщенность', contrast:'Контраст', pivot:'Опора', lift:'Лифт', gamma:'Гамма', gain:'Гейн', natural:'Нейтральный', film:'Плёнка', cinematic:'Кино', portrait:'Портрет', night:'Ночь', golden:'Золотой', videoSaved:'✓ Видео сохранено', camUnavailable:'Камера недоступна', apiKey:'Ключ Anthropic API', apiHint:'Получить: console.anthropic.com', vignette:'Виньетка', filmGrain:'Зерно', hue:'Тон', red:'К', green:'З', blue:'С', scenarios:'Сценарии', scNight:'Ночная улица', scPortrait:'Портрет', scGolden:'Закат', scInterview:'Интервью', scFood:'Еда', scBlog:'Влог дома', scApplied:'применён',
     homeGreeting:'Привет, создатель!', homeSub:'Что будем снимать сегодня?', qsBadge:'Быстрый старт', qsTitle:'ИИ-оператор камеры', qsDesc:'Открой камеру и доверь ИИ выставить киношный вид автоматически.', qsBtn:'Открыть камеру', tipsH:'Полезное', seeAll:'Все', presetsSub:'Готовые профессиональные настройки', learnTitle:'Обучение', learnSub:'Короткие гайды, чтобы снимать лучше', profileTitle:'Профиль', profileSub:'Настройки и параметры', langLabel:'Язык', tabHome:'Главная', tabPresets:'Пресеты', tabLearn:'Обучение', tabProfile:'Профиль',
-    tipShakyT:'Почему видео дёргается?', tipShakyD:'5 советов для плавности', tipExpoT:'Как настроить экспозицию', tipExpoD:'Держи гистограмму в диапазоне', tipLogT:'Зачем снимать в Log', tipLogD:'Больше запаса для цветокоррекции', tipFpsT:'Как выбрать FPS', tipFpsD:'24 для кино, 60 для слоумо', tipBokehT:'Как размыть фон', tipBokehD:'Дистанция, свет и выбор линзы', expoOk:'Экспозиция в норме', expoBright:'Слишком светло', expoDark:'Слишком тёмно', before:'ДО', after:'ПОСЛЕ', historyH:'Записи', noClips:'Пока нет записей', download:'Скачать', deleteClip:'Удалить' },
+    tipShakyT:'Почему видео дёргается?', tipShakyD:'5 советов для плавности', tipExpoT:'Как настроить экспозицию', tipExpoD:'Держи гистограмму в диапазоне', tipLogT:'Зачем снимать в Log', tipLogD:'Больше запаса для цветокоррекции', tipFpsT:'Как выбрать FPS', tipFpsD:'24 для кино, 60 для слоумо', tipBokehT:'Как размыть фон', tipBokehD:'Дистанция, свет и выбор линзы', expoOk:'Экспозиция в норме', expoBright:'Слишком светло', expoDark:'Слишком тёмно', before:'ДО', after:'ПОСЛЕ', historyH:'Записи', noClips:'Пока нет записей', download:'Скачать', deleteClip:'Удалить', aiBusy:'ИИ занят, короткая пауза' },
   de: { chooseLanguage:'Sprache wählen', aiAuto:'KI AUTO', aiOff:'KI AUS', aiControlling:'KI steuert', takeManual:'Manuell', letAI:'KI überlassen', manual:'MANUELL', settings:'Einstellungen', save:'Speichern', reset:'Zurücksetzen', exposure:'Belichtung', whiteBalance:'Weißabgleich', color:'Farbe', grade:'Grading', lut:'LUT', iso:'ISO', shutter:'Verschluss', frameRate:'Bildrate', temperature:'Temperatur', tint:'Tönung', saturation:'Sättigung', contrast:'Kontrast', pivot:'Pivot', lift:'Lift', gamma:'Gamma', gain:'Gain', natural:'Natürlich', film:'Film', cinematic:'Kino', portrait:'Porträt', night:'Nacht', golden:'Golden', videoSaved:'✓ Video gespeichert', camUnavailable:'Kamera nicht verfügbar', apiKey:'Anthropic API-Schlüssel', apiHint:'Schlüssel: console.anthropic.com', vignette:'Vignette', filmGrain:'Filmkorn', hue:'Farbton', red:'R', green:'G', blue:'B' },
   fr: { chooseLanguage:'Choisissez votre langue', aiAuto:'IA AUTO', aiOff:'IA OFF', aiControlling:"L'IA contrôle", takeManual:'Contrôle manuel', letAI:"Laisser l'IA", manual:'MANUEL', settings:'Paramètres', save:'Enregistrer', reset:'Réinitialiser', exposure:'Exposition', whiteBalance:'Balance des blancs', color:'Couleur', grade:'Étalonnage', lut:'LUT', iso:'ISO', shutter:'Obturateur', frameRate:'Fréq. images', temperature:'Température', tint:'Teinte', saturation:'Saturation', contrast:'Contraste', pivot:'Pivot', lift:'Lift', gamma:'Gamma', gain:'Gain', natural:'Naturel', film:'Film', cinematic:'Cinéma', portrait:'Portrait', night:'Nuit', golden:'Doré', videoSaved:'✓ Vidéo sauvegardée', camUnavailable:'Caméra indisponible', apiKey:'Clé API Anthropic', apiHint:'Obtenir: console.anthropic.com', vignette:'Vignette', filmGrain:'Grain', hue:'Teinte', red:'R', green:'V', blue:'B' },
   es: { chooseLanguage:'Elige tu idioma', aiAuto:'IA AUTO', aiOff:'IA OFF', aiControlling:'IA controlando', takeManual:'Control manual', letAI:'Dejar a la IA', manual:'MANUAL', settings:'Ajustes', save:'Guardar', reset:'Restablecer', exposure:'Exposición', whiteBalance:'Balance de blancos', color:'Color', grade:'Gradación', lut:'LUT', iso:'ISO', shutter:'Obturador', frameRate:'Fotogramas/s', temperature:'Temperatura', tint:'Tinte', saturation:'Saturación', contrast:'Contraste', pivot:'Pivote', lift:'Lift', gamma:'Gamma', gain:'Gain', natural:'Natural', film:'Película', cinematic:'Cinemático', portrait:'Retrato', night:'Noche', golden:'Dorado', videoSaved:'✓ Vídeo guardado', camUnavailable:'Cámara no disponible', apiKey:'Clave API Anthropic', apiHint:'Obtener: console.anthropic.com', vignette:'Viñeta', filmGrain:'Grano', hue:'Matiz', red:'R', green:'G', blue:'B' },
@@ -1155,6 +1160,13 @@ async function runAI() {
       const lutKey = p.lut || 'natural';
       document.getElementById('ai-lut-name').textContent = t(lutKey);
       showAIInsight(p);
+    } else if (res.status === 429) {
+      // Rate / daily limit reached — back off longer to stay polite.
+      toast('⏳ ' + t('aiBusy'));
+      setAIActive(false);
+      S.aiCycleStart = Date.now();
+      scheduleAI(90000);
+      return;
     }
   } catch { /* silent */ }
   finally {
@@ -1705,6 +1717,13 @@ if (S.lang) {
   showHub('home');
 } else {
   document.getElementById('screen-lang').classList.remove('hidden');
+}
+
+// Register service worker (installable PWA)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
 }
 </script>
 </body>
