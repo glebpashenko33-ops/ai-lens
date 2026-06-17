@@ -1349,6 +1349,7 @@ function startRenderLoop() {
   const ovCanvas = document.getElementById('canvas-overlay');
   const ovCtx    = ovCanvas.getContext('2d');
   let grainT = 0;
+  let distMap = null; // cached normalized distance-from-center per pixel, rebuilt only on resize
 
   function frame() {
     if (!S.renderRunning) return;
@@ -1368,13 +1369,14 @@ function startRenderLoop() {
     // Render the actual graded pixels into video-canvas — this is both what's
     // shown on screen AND what gets captured for recording, so preview and
     // saved video can never drift apart (and it sidesteps Safari's flaky
-    // support for CSS/SVG filters on <video>).
+    // support for CSS/SVG filters on <video>). Capped to 640px wide — full
+    // 1080p per-pixel grading every frame is too slow on phones.
     if (video.videoWidth) {
-      const maxW = 1280;
+      const maxW = 640;
       const scale = Math.min(1, maxW / video.videoWidth);
       const tw = Math.max(2, Math.round(video.videoWidth * scale));
       const th = Math.max(2, Math.round(video.videoHeight * scale));
-      if (vc.width !== tw || vc.height !== th) { vc.width = tw; vc.height = th; }
+      if (vc.width !== tw || vc.height !== th) { vc.width = tw; vc.height = th; distMap = null; }
 
       const brightness = Math.pow(2, c.exposure);
       const hueDeg = c.hue * 30 + lut.hueRot;
@@ -1393,15 +1395,22 @@ function startRenderLoop() {
       const imgData = vctx.getImageData(0, 0, vc.width, vc.height);
       const px = imgData.data;
       const doVign = c.vignette > 0.01;
-      const cx = vc.width / 2, cy = vc.height / 2, maxDist = Math.sqrt(cx * cx + cy * cy);
+      if (doVign && !distMap) {
+        distMap = new Float32Array(vc.width * vc.height);
+        const cx = vc.width / 2, cy = vc.height / 2, maxDist = Math.sqrt(cx * cx + cy * cy);
+        for (let p = 0, y = 0; y < vc.height; y++) {
+          for (let x = 0; x < vc.width; x++, p++) {
+            distMap[p] = Math.sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy)) / maxDist;
+          }
+        }
+      }
       const edge = 1 - c.vignette * 0.5, dark = c.vignette * 0.85;
       for (let i = 0, p = 0; i < px.length; i += 4, p++) {
         px[i]   = lutR[px[i]];
         px[i+1] = lutG[px[i+1]];
         px[i+2] = lutB[px[i+2]];
         if (doVign) {
-          const x = p % vc.width, y = (p / vc.width) | 0;
-          const dist = Math.sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy)) / maxDist;
+          const dist = distMap[p];
           if (dist > edge) {
             const f = 1 - Math.min(1, (dist - edge) / (1 - edge)) * dark;
             px[i] *= f; px[i+1] *= f; px[i+2] *= f;
