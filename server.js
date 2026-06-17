@@ -13,7 +13,7 @@ app.get('/api/config', (req, res) => {
 
 // ─── Claude API proxy ────────────────────────────────────────────────────────
 app.post('/api/analyze', async (req, res) => {
-  const { imageBase64 } = req.body;
+  const { imageBase64, lang } = req.body;
   // Prefer server-side key (Railway env), fall back to user-provided key
   const apiKey = process.env.ANTHROPIC_API_KEY || req.headers['x-api-key'];
 
@@ -21,6 +21,12 @@ app.post('/api/analyze', async (req, res) => {
 
   const Anthropic = require('@anthropic-ai/sdk');
   const client = new Anthropic({ apiKey });
+
+  const LANGS = {
+    en:'English', ru:'Russian', de:'German', fr:'French', es:'Spanish', it:'Italian',
+    pt:'Portuguese', zh:'Chinese', ja:'Japanese', ko:'Korean', ar:'Arabic', hi:'Hindi'
+  };
+  const langName = LANGS[lang] || 'English';
 
   const system = `Ты — автоматический колорист и оператор внутри профессиональной кинокамеры Blackmagic с движком цветокоррекции DaVinci Resolve. Ты видишь живой кадр и в реальном времени выставляешь параметры съёмки и цветокоррекции так, как это сделал бы профессиональный кинооператор + колорист. Цель — кинематографичная, чистая, выразительная картинка БЕЗ участия человека.
 
@@ -38,8 +44,17 @@ app.post('/api/analyze', async (req, res) => {
 3. Береги телесные тона: при людях не уводи gamma в зелень/синеву, держи кожу естественной и тёплой.
 4. Контраст и насыщенность — умеренно, избегай "кислотных" цветов и потери деталей.
 
+ЭТАП 3 — ОЦЕНКА И СОВЕТЫ ОПЕРАТОРА:
+- Оцени кадр по 100-балльной шкале (score): композиция, экспозиция, свет, цвет, фокус — насколько профессионально выглядит кадр прямо сейчас.
+- Определи короткое название сцены (scene): например "Ночная улица", "Портрет", "Интерьер", "Закат", "Еда".
+- Дай 2-3 КОРОТКИХ практических совета (tips), как снять лучше: про свет, ракурс, дистанцию, экспозицию, композицию. Каждый совет — одна короткая фраза, как живой оператор рядом.
+- ВАЖНО: поля "scene" и "tips" напиши на языке: ${langName}. Остальные числовые параметры не переводятся.
+
 Верни ТОЛЬКО валидный JSON без пояснений и без markdown:
 {
+  "scene": "Night Street",
+  "score": 82,
+  "tips": ["Move closer to the subject", "Lower the ISO to reduce noise", "Use side light"],
   "exposure": 0.0,
   "temperature": 5600,
   "tint": 0,
@@ -100,13 +115,13 @@ app.post('/api/analyze', async (req, res) => {
   try {
     const msg = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 600,
+      max_tokens: 800,
       system,
       messages: [{ role: 'user', content }]
     });
 
     const text = msg.content[0].text;
-    const match = text.match(/\{[\s\S]*?\}/);
+    const match = text.match(/\{[\s\S]*\}/);
     if (match) {
       res.json(JSON.parse(match[0]));
     } else {

@@ -53,6 +53,23 @@
     .ai-strip-label { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.25); letter-spacing: 1.2px; transition: color 0.4s; }
     .ai-strip-label.on { color: rgba(255,255,255,0.65); }
     #ai-lut-name { font-size: 10px; color: rgba(255,255,255,0.28); letter-spacing: 0.5px; }
+    #ai-score-pill { display: flex; align-items: center; gap: 3px; background: rgba(14,15,17,0.7); border: 1px solid rgba(245,185,66,0.4); border-radius: 20px; padding: 2px 8px; font-size: 10px; font-weight: 700; color: #f5b942; cursor: pointer; backdrop-filter: blur(8px); }
+    #ai-score-pill::before { content: '★'; font-size: 9px; }
+
+    /* AI insight card */
+    #ai-insight { position: absolute; top: calc(env(safe-area-inset-top,20px) + 134px); left: 14px; right: 14px; z-index: 12; background: rgba(14,15,17,0.86); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 13px 14px; backdrop-filter: blur(18px); box-shadow: 0 6px 24px rgba(0,0,0,0.5); opacity: 1; transition: opacity 0.3s, transform 0.3s; }
+    #ai-insight.hidden { display: block !important; opacity: 0; transform: translateY(-8px); pointer-events: none; }
+    .ins-head { display: flex; align-items: center; gap: 10px; }
+    .ins-scene { flex: 1; font-size: 15px; font-weight: 700; color: #fff; }
+    .ins-score-box { font-weight: 800; color: #f5b942; font-variant-numeric: tabular-nums; }
+    .ins-score-box #ins-score { font-size: 19px; }
+    .ins-score-max { font-size: 11px; color: rgba(255,255,255,0.35); }
+    .ins-close { width: 24px; height: 24px; border-radius: 50%; background: rgba(255,255,255,0.1); border: none; color: rgba(255,255,255,0.5); font-size: 11px; cursor: pointer; flex-shrink: 0; }
+    .ins-bar { height: 4px; background: rgba(255,255,255,0.1); border-radius: 3px; margin: 9px 0 11px; overflow: hidden; }
+    .ins-bar-fill { height: 100%; border-radius: 3px; width: 0%; transition: width 0.6s cubic-bezier(.4,0,.2,1); background: linear-gradient(90deg,#ff5b50,#f5b942 60%,#30d158); }
+    .ins-tips { display: flex; flex-direction: column; gap: 7px; }
+    .ins-tip { display: flex; gap: 8px; font-size: 12.5px; color: rgba(255,255,255,0.78); line-height: 1.35; }
+    .ins-tip::before { content: '→'; color: #f5b942; flex-shrink: 0; }
 
     /* ── REC badge ── */
     #rec-badge { position: absolute; top: calc(env(safe-area-inset-top,20px) + 58px); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 7px; z-index: 11; background: rgba(14,15,17,0.72); border: 1px solid rgba(255,59,48,0.35); border-radius: 7px; padding: 5px 11px; backdrop-filter: blur(10px); box-shadow: 0 1px 8px rgba(0,0,0,0.5); }
@@ -304,8 +321,20 @@
     <div class="ai-strip-left">
       <div class="ai-dot" id="ai-dot"></div>
       <div class="ai-strip-label" id="ai-strip-label">AI</div>
+      <div id="ai-score-pill" class="hidden" onclick="toggleAIInsight()"><span id="ai-score-val">–</span></div>
     </div>
     <div id="ai-lut-name">Natural</div>
+  </div>
+
+  <!-- AI insight card (scene + score + tips) -->
+  <div id="ai-insight" class="hidden">
+    <div class="ins-head">
+      <div class="ins-scene" id="ins-scene">—</div>
+      <div class="ins-score-box"><span id="ins-score">0</span><span class="ins-score-max">/100</span></div>
+      <button class="ins-close" onclick="hideAIInsight()">✕</button>
+    </div>
+    <div class="ins-bar"><div class="ins-bar-fill" id="ins-bar-fill"></div></div>
+    <div class="ins-tips" id="ins-tips"></div>
   </div>
 
   <!-- REC badge -->
@@ -713,6 +742,9 @@ function openCameraScreen(scenarioKey) {
 
 function leaveCamera() {
   if (S.isRecording) stopRecord();
+  hideAIInsight();
+  document.getElementById('ai-score-pill').classList.add('hidden');
+  lastInsight = null;
   S.renderRunning = false;
   if (S.animFrame) cancelAnimationFrame(S.animFrame);
   clearTimeout(S.aiTimer);
@@ -890,20 +922,68 @@ async function runAI() {
     const res = await fetch('/api/analyze', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': S.apiKey },
-      body: JSON.stringify({ imageBase64: b64 }),
+      body: JSON.stringify({ imageBase64: b64, lang: S.lang }),
     });
     if (res.ok) {
       const p = await res.json();
       applyAIParams(p);
       const lutKey = p.lut || 'natural';
       document.getElementById('ai-lut-name').textContent = t(lutKey);
-      toast('✦ AI: ' + t(lutKey));
+      showAIInsight(p);
     }
   } catch { /* silent */ }
   finally {
     setAIActive(false);
     S.aiCycleStart = Date.now();
     scheduleAI(30000);
+  }
+}
+
+// ─── AI insight (scene / score / tips) ───────────────────────────────────────
+let lastInsight = null;
+let insightTimer = null;
+
+function showAIInsight(p) {
+  const scene = p.scene || '';
+  const score = Math.max(0, Math.min(100, Math.round(+p.score || 0)));
+  const tips = Array.isArray(p.tips) ? p.tips.slice(0, 3) : [];
+  if (!scene && !tips.length) return;
+  lastInsight = { scene, score, tips };
+
+  // Score pill in the strip
+  const pill = document.getElementById('ai-score-pill');
+  pill.classList.remove('hidden');
+  document.getElementById('ai-score-val').textContent = score;
+
+  // Card
+  document.getElementById('ins-scene').textContent = scene || '—';
+  document.getElementById('ins-score').textContent = score;
+  document.getElementById('ins-bar-fill').style.width = score + '%';
+  const tipsBox = document.getElementById('ins-tips');
+  tipsBox.innerHTML = '';
+  tips.forEach(tx => {
+    const d = document.createElement('div');
+    d.className = 'ins-tip';
+    d.textContent = tx;
+    tipsBox.appendChild(d);
+  });
+
+  document.getElementById('ai-insight').classList.remove('hidden');
+  clearTimeout(insightTimer);
+  insightTimer = setTimeout(hideAIInsight, 9000);
+}
+
+function hideAIInsight() {
+  clearTimeout(insightTimer);
+  document.getElementById('ai-insight').classList.add('hidden');
+}
+
+function toggleAIInsight() {
+  const card = document.getElementById('ai-insight');
+  if (card.classList.contains('hidden')) {
+    if (lastInsight) { showAIInsight(lastInsight); }
+  } else {
+    hideAIInsight();
   }
 }
 
@@ -973,6 +1053,8 @@ function applyScenario(key) {
   clearTimeout(S.aiTimer);
   updateModeUI();
   setAIActive(false);
+  hideAIInsight();
+  document.getElementById('ai-score-pill').classList.add('hidden');
 
   // Camera params
   S.params.iso = s.cam.iso;
