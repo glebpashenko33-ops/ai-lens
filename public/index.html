@@ -67,6 +67,16 @@
     #bottom-area { position: absolute; bottom: 0; left: 0; right: 0; z-index: 10; padding-bottom: calc(env(safe-area-inset-bottom,24px) + 12px);
       background: linear-gradient(to top, rgba(12,13,15,0.92) 0%, rgba(12,13,15,0.78) 55%, transparent 100%);
       border-top: 1px solid rgba(255,255,255,0.05); border-radius: 20px 20px 0 0; backdrop-filter: blur(14px); }
+    /* ── Scenario presets strip ── */
+    #scenario-strip { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 14px 20px 12px; -webkit-overflow-scrolling: touch; }
+    #scenario-strip::-webkit-scrollbar { display: none; }
+    .scn-card { flex-shrink: 0; display: flex; align-items: center; gap: 7px; padding: 8px 13px 8px 10px; border-radius: 11px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); cursor: pointer; transition: all 0.18s; }
+    .scn-card:active { transform: scale(0.96); }
+    .scn-card.active { background: rgba(245,185,66,0.16); border-color: rgba(245,185,66,0.5); box-shadow: 0 0 14px rgba(245,185,66,0.18); }
+    .scn-icon { font-size: 17px; line-height: 1; }
+    .scn-name { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.78); white-space: nowrap; letter-spacing: 0.2px; }
+    .scn-card.active .scn-name { color: #f5b942; }
+
     #ai-progress-track { height: 2px; background: rgba(255,255,255,0.08); border-radius: 2px; margin: 0 20px; }
     #ai-progress-fill { height: 100%; background: linear-gradient(90deg,#f5b942,#ff9f0a); border-radius: 2px; transition: width 0.3s linear; width: 0%; box-shadow: 0 0 8px rgba(245,185,66,0.5); }
 
@@ -242,6 +252,9 @@
 
   <!-- Bottom area -->
   <div id="bottom-area">
+    <!-- Scenario presets strip -->
+    <div id="scenario-strip"></div>
+
     <div id="ai-progress-track"><div id="ai-progress-fill"></div></div>
 
     <div id="controls-row">
@@ -316,8 +329,8 @@
 <script>
 // ─── Translations ─────────────────────────────────────────────────────────────
 const T = {
-  en: { chooseLanguage:'Choose your language', aiAuto:'AI AUTO', aiOff:'AI OFF', aiControlling:'AI is controlling', takeManual:'Take manual control', letAI:'Let AI take over', manual:'MANUAL', settings:'Settings', save:'Save', reset:'Reset', exposure:'Exposure', whiteBalance:'White Balance', color:'Color', grade:'Grade', lut:'LUT', iso:'ISO', shutter:'Shutter', frameRate:'Frame Rate', temperature:'Temperature', tint:'Tint', saturation:'Saturation', contrast:'Contrast', pivot:'Pivot', lift:'Lift', gamma:'Gamma', gain:'Gain', natural:'Natural', film:'Film', cinematic:'Cinematic', portrait:'Portrait', night:'Night', golden:'Golden', videoSaved:'✓ Video saved', camUnavailable:'Camera unavailable', apiKey:'Anthropic API Key', apiHint:'Get key: console.anthropic.com', vignette:'Vignette', filmGrain:'Film Grain', hue:'Hue', red:'R', green:'G', blue:'B' },
-  ru: { chooseLanguage:'Выберите язык', aiAuto:'ИИ АВТО', aiOff:'ИИ ВЫКЛ', aiControlling:'ИИ управляет', takeManual:'Взять управление', letAI:'Доверить ИИ', manual:'РУЧНОЙ', settings:'Настройки', save:'Сохранить', reset:'Сбросить', exposure:'Экспозиция', whiteBalance:'Баланс белого', color:'Цвет', grade:'Грейдинг', lut:'LUT', iso:'ISO', shutter:'Затвор', frameRate:'Частота кадров', temperature:'Температура', tint:'Оттенок', saturation:'Насыщенность', contrast:'Контраст', pivot:'Опора', lift:'Лифт', gamma:'Гамма', gain:'Гейн', natural:'Нейтральный', film:'Плёнка', cinematic:'Кино', portrait:'Портрет', night:'Ночь', golden:'Золотой', videoSaved:'✓ Видео сохранено', camUnavailable:'Камера недоступна', apiKey:'Ключ Anthropic API', apiHint:'Получить: console.anthropic.com', vignette:'Виньетка', filmGrain:'Зерно', hue:'Тон', red:'К', green:'З', blue:'С' },
+  en: { chooseLanguage:'Choose your language', aiAuto:'AI AUTO', aiOff:'AI OFF', aiControlling:'AI is controlling', takeManual:'Take manual control', letAI:'Let AI take over', manual:'MANUAL', settings:'Settings', save:'Save', reset:'Reset', exposure:'Exposure', whiteBalance:'White Balance', color:'Color', grade:'Grade', lut:'LUT', iso:'ISO', shutter:'Shutter', frameRate:'Frame Rate', temperature:'Temperature', tint:'Tint', saturation:'Saturation', contrast:'Contrast', pivot:'Pivot', lift:'Lift', gamma:'Gamma', gain:'Gain', natural:'Natural', film:'Film', cinematic:'Cinematic', portrait:'Portrait', night:'Night', golden:'Golden', videoSaved:'✓ Video saved', camUnavailable:'Camera unavailable', apiKey:'Anthropic API Key', apiHint:'Get key: console.anthropic.com', vignette:'Vignette', filmGrain:'Film Grain', hue:'Hue', red:'R', green:'G', blue:'B', scenarios:'Scenarios', scNight:'Night Street', scPortrait:'Portrait', scGolden:'Golden Hour', scInterview:'Interview', scFood:'Food', scBlog:'Home Vlog', scApplied:'applied' },
+  ru: { chooseLanguage:'Выберите язык', aiAuto:'ИИ АВТО', aiOff:'ИИ ВЫКЛ', aiControlling:'ИИ управляет', takeManual:'Взять управление', letAI:'Доверить ИИ', manual:'РУЧНОЙ', settings:'Настройки', save:'Сохранить', reset:'Сбросить', exposure:'Экспозиция', whiteBalance:'Баланс белого', color:'Цвет', grade:'Грейдинг', lut:'LUT', iso:'ISO', shutter:'Затвор', frameRate:'Частота кадров', temperature:'Температура', tint:'Оттенок', saturation:'Насыщенность', contrast:'Контраст', pivot:'Опора', lift:'Лифт', gamma:'Гамма', gain:'Гейн', natural:'Нейтральный', film:'Плёнка', cinematic:'Кино', portrait:'Портрет', night:'Ночь', golden:'Золотой', videoSaved:'✓ Видео сохранено', camUnavailable:'Камера недоступна', apiKey:'Ключ Anthropic API', apiHint:'Получить: console.anthropic.com', vignette:'Виньетка', filmGrain:'Зерно', hue:'Тон', red:'К', green:'З', blue:'С', scenarios:'Сценарии', scNight:'Ночная улица', scPortrait:'Портрет', scGolden:'Закат', scInterview:'Интервью', scFood:'Еда', scBlog:'Влог дома', scApplied:'применён' },
   de: { chooseLanguage:'Sprache wählen', aiAuto:'KI AUTO', aiOff:'KI AUS', aiControlling:'KI steuert', takeManual:'Manuell', letAI:'KI überlassen', manual:'MANUELL', settings:'Einstellungen', save:'Speichern', reset:'Zurücksetzen', exposure:'Belichtung', whiteBalance:'Weißabgleich', color:'Farbe', grade:'Grading', lut:'LUT', iso:'ISO', shutter:'Verschluss', frameRate:'Bildrate', temperature:'Temperatur', tint:'Tönung', saturation:'Sättigung', contrast:'Kontrast', pivot:'Pivot', lift:'Lift', gamma:'Gamma', gain:'Gain', natural:'Natürlich', film:'Film', cinematic:'Kino', portrait:'Porträt', night:'Nacht', golden:'Golden', videoSaved:'✓ Video gespeichert', camUnavailable:'Kamera nicht verfügbar', apiKey:'Anthropic API-Schlüssel', apiHint:'Schlüssel: console.anthropic.com', vignette:'Vignette', filmGrain:'Filmkorn', hue:'Farbton', red:'R', green:'G', blue:'B' },
   fr: { chooseLanguage:'Choisissez votre langue', aiAuto:'IA AUTO', aiOff:'IA OFF', aiControlling:"L'IA contrôle", takeManual:'Contrôle manuel', letAI:"Laisser l'IA", manual:'MANUEL', settings:'Paramètres', save:'Enregistrer', reset:'Réinitialiser', exposure:'Exposition', whiteBalance:'Balance des blancs', color:'Couleur', grade:'Étalonnage', lut:'LUT', iso:'ISO', shutter:'Obturateur', frameRate:'Fréq. images', temperature:'Température', tint:'Teinte', saturation:'Saturation', contrast:'Contraste', pivot:'Pivot', lift:'Lift', gamma:'Gamma', gain:'Gain', natural:'Naturel', film:'Film', cinematic:'Cinéma', portrait:'Portrait', night:'Nuit', golden:'Doré', videoSaved:'✓ Vidéo sauvegardée', camUnavailable:'Caméra indisponible', apiKey:'Clé API Anthropic', apiHint:'Obtenir: console.anthropic.com', vignette:'Vignette', filmGrain:'Grain', hue:'Teinte', red:'R', green:'V', blue:'B' },
   es: { chooseLanguage:'Elige tu idioma', aiAuto:'IA AUTO', aiOff:'IA OFF', aiControlling:'IA controlando', takeManual:'Control manual', letAI:'Dejar a la IA', manual:'MANUAL', settings:'Ajustes', save:'Guardar', reset:'Restablecer', exposure:'Exposición', whiteBalance:'Balance de blancos', color:'Color', grade:'Gradación', lut:'LUT', iso:'ISO', shutter:'Obturador', frameRate:'Fotogramas/s', temperature:'Temperatura', tint:'Tinte', saturation:'Saturación', contrast:'Contraste', pivot:'Pivote', lift:'Lift', gamma:'Gamma', gain:'Gain', natural:'Natural', film:'Película', cinematic:'Cinemático', portrait:'Retrato', night:'Noche', golden:'Dorado', videoSaved:'✓ Vídeo guardado', camUnavailable:'Cámara no disponible', apiKey:'Clave API Anthropic', apiHint:'Obtener: console.anthropic.com', vignette:'Viñeta', filmGrain:'Grano', hue:'Matiz', red:'R', green:'G', blue:'B' },
@@ -338,6 +351,23 @@ const LUTS = {
   portrait:  { liftR:0.01,  liftG:0.005, liftB:0,     gainR:1.05, gainG:1.0,  gainB:0.98, contrast:0.98, saturate:1.08, hueRot:2 },
   night:     { liftR:0,     liftG:0.01,  liftB:0.03,  gainR:1.0,  gainG:1.0,  gainB:1.02, contrast:1.05, saturate:0.8,  hueRot:4 },
   golden:    { liftR:0.02,  liftG:0,     liftB:-0.01, gainR:1.12, gainG:1.02, gainB:0.9,  contrast:1.05, saturate:1.25, hueRot:6 },
+};
+
+// ─── Scenario presets (one-tap professional setups) ─────────────────────────
+// Each sets camera params (iso/shutter/fps/temp) + a full color-grade target.
+const SCENARIOS = {
+  scNight:     { icon:'🌃', cam:{ iso:1600, shutterAngle:180, fps:24, temperature:4300, tint:4 },
+                 grade:{ exposure:0.2, contrast:1.12, saturation:1.1, lift:{r:0,g:0.01,b:0.03}, gamma:{r:0,g:0,b:0.02}, gain:{r:1.04,g:1,b:1.02}, vignette:0.22, filmGrain:0.18, lut:'cinematic' } },
+  scPortrait:  { icon:'👤', cam:{ iso:400, shutterAngle:180, fps:24, temperature:5200, tint:6 },
+                 grade:{ exposure:0.1, contrast:0.98, saturation:1.08, lift:{r:0.01,g:0.005,b:0}, gamma:{r:0.02,g:0,b:-0.01}, gain:{r:1.05,g:1,b:0.98}, vignette:0.12, filmGrain:0, lut:'portrait' } },
+  scGolden:    { icon:'🌅', cam:{ iso:200, shutterAngle:180, fps:24, temperature:6500, tint:8 },
+                 grade:{ exposure:0, contrast:1.06, saturation:1.22, lift:{r:0.02,g:0,b:-0.01}, gamma:{r:0.03,g:0.01,b:-0.02}, gain:{r:1.12,g:1.02,b:0.9}, vignette:0.2, filmGrain:0.08, lut:'golden' } },
+  scInterview: { icon:'🎙️', cam:{ iso:400, shutterAngle:180, fps:25, temperature:4800, tint:2 },
+                 grade:{ exposure:0.1, contrast:1.0, saturation:1.02, lift:{r:0,g:0,b:0.01}, gamma:{r:0,g:0,b:0}, gain:{r:1.02,g:1,b:0.99}, vignette:0.1, filmGrain:0, lut:'film' } },
+  scFood:      { icon:'🍽️', cam:{ iso:200, shutterAngle:180, fps:30, temperature:4500, tint:5 },
+                 grade:{ exposure:0.15, contrast:1.1, saturation:1.18, lift:{r:0.01,g:0,b:0}, gamma:{r:0.01,g:0,b:0}, gain:{r:1.05,g:1.01,b:0.97}, vignette:0.15, filmGrain:0, lut:'natural' } },
+  scBlog:      { icon:'🏠', cam:{ iso:800, shutterAngle:180, fps:30, temperature:5000, tint:3 },
+                 grade:{ exposure:0.1, contrast:1.02, saturation:1.06, lift:{r:0.005,g:0,b:0.005}, gamma:{r:0.01,g:0,b:0}, gain:{r:1.02,g:1,b:0.99}, vignette:0.08, filmGrain:0, lut:'natural' } },
 };
 
 const LANGUAGES = [
@@ -427,6 +457,7 @@ function showCamera() {
   applyTranslations();
   updateModeUI();
   updateTopChips();
+  buildScenarios();
   initCamera();
 }
 
@@ -554,6 +585,8 @@ function toggleAIMode() {
 
 function enableAI() {
   S.mode = 'ai';
+  activeScenario = null;
+  if (typeof buildScenarios === 'function') buildScenarios();
   closeManual();
   updateModeUI();
   runAI();
@@ -649,6 +682,57 @@ function applyAIParams(p) {
 function setAIActive(on) {
   document.getElementById('ai-dot').classList.toggle('on', on);
   document.getElementById('ai-strip-label').classList.toggle('on', on);
+}
+
+// ─── Scenario presets ─────────────────────────────────────────────────────────
+let activeScenario = null;
+
+function buildScenarios() {
+  const strip = document.getElementById('scenario-strip');
+  strip.innerHTML = '';
+  Object.keys(SCENARIOS).forEach(key => {
+    const s = SCENARIOS[key];
+    const card = document.createElement('div');
+    card.className = 'scn-card' + (activeScenario === key ? ' active' : '');
+    card.dataset.scn = key;
+    card.innerHTML = '<span class="scn-icon">' + s.icon + '</span><span class="scn-name">' + t(key) + '</span>';
+    card.onclick = () => applyScenario(key);
+    strip.appendChild(card);
+  });
+}
+
+function applyScenario(key) {
+  const s = SCENARIOS[key];
+  if (!s) return;
+  // Scenario is a manual preset — stop AI so the look sticks.
+  S.mode = 'manual';
+  clearTimeout(S.aiTimer);
+  updateModeUI();
+  setAIActive(false);
+
+  // Camera params
+  S.params.iso = s.cam.iso;
+  S.params.shutterAngle = s.cam.shutterAngle;
+  S.params.fps = s.cam.fps;
+  S.params.temperature = s.cam.temperature;
+  S.params.tint = s.cam.tint;
+
+  // Color grade target (flatten lift/gamma/gain)
+  const g = s.grade, d = defaultParams();
+  S.tgt = Object.assign(d, {
+    exposure: g.exposure, contrast: g.contrast, saturation: g.saturation,
+    temperature: s.cam.temperature, tint: s.cam.tint,
+    liftR: g.lift.r,  liftG: g.lift.g,  liftB: g.lift.b,
+    gammaR: g.gamma.r, gammaG: g.gamma.g, gammaB: g.gamma.b,
+    gainR: g.gain.r,  gainG: g.gain.g,  gainB: g.gain.b,
+    vignette: g.vignette, filmGrain: g.filmGrain, lut: g.lut,
+  });
+
+  activeScenario = key;
+  document.getElementById('ai-lut-name').textContent = t(g.lut);
+  updateTopChips();
+  buildScenarios();
+  toast(s.icon + ' ' + t(key) + ' — ' + t('scApplied'));
 }
 
 // ─── Render loop ──────────────────────────────────────────────────────────────
