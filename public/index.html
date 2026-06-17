@@ -26,6 +26,15 @@
     /* ── Camera screen ── */
     #screen-camera { background: #000; }
     #video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    /* Raw (ungraded) feed for split before/after — clipped to left half, shown on demand */
+    #video-raw { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 2; display: none; clip-path: inset(0 50% 0 0); }
+    #video-raw.show { display: block; }
+    #split-ui { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+    #split-ui.hidden { display: none; }
+    .split-divider { position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; transform: translateX(-1px); background: rgba(255,255,255,0.85); box-shadow: 0 0 8px rgba(0,0,0,0.6); }
+    .split-label { position: absolute; top: calc(env(safe-area-inset-top,20px) + 150px); font-size: 11px; font-weight: 700; letter-spacing: 1.5px; color: #fff; background: rgba(0,0,0,0.5); padding: 4px 10px; border-radius: 6px; backdrop-filter: blur(6px); }
+    .split-before { left: 14px; }
+    .split-after { right: 14px; }
     #canvas-overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; }
     #vignette { position: absolute; inset: 0; pointer-events: none; z-index: 4; }
     #grain { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 4; opacity: 0; mix-blend-mode: overlay; }
@@ -294,6 +303,12 @@
 <!-- SCREEN: Camera -->
 <div id="screen-camera" class="screen hidden">
   <video id="video" autoplay playsinline muted></video>
+  <video id="video-raw" autoplay playsinline muted></video>
+  <div id="split-ui" class="hidden">
+    <div class="split-divider"></div>
+    <div class="split-label split-before" id="split-before">BEFORE</div>
+    <div class="split-label split-after" id="split-after">AFTER</div>
+  </div>
   <canvas id="canvas-overlay"></canvas>
   <div id="vignette"></div>
   <canvas id="grain"></canvas>
@@ -375,6 +390,7 @@
         <button class="ov-btn" id="btn-zebra" onclick="toggleOverlay('zebra')" title="Zebra">◨</button>
         <button class="ov-btn" id="btn-peaking" onclick="toggleOverlay('peaking')" title="Peaking">◈</button>
         <button class="ov-btn" id="btn-histogram" onclick="toggleOverlay('histogram')" title="Histogram">▦</button>
+        <button class="ov-btn" id="btn-split" onclick="toggleSplit()" title="Before/After">◐</button>
       </div>
 
       <!-- Record button -->
@@ -506,10 +522,10 @@
 const T = {
   en: { chooseLanguage:'Choose your language', aiAuto:'AI AUTO', aiOff:'AI OFF', aiControlling:'AI is controlling', takeManual:'Take manual control', letAI:'Let AI take over', manual:'MANUAL', settings:'Settings', save:'Save', reset:'Reset', exposure:'Exposure', whiteBalance:'White Balance', color:'Color', grade:'Grade', lut:'LUT', iso:'ISO', shutter:'Shutter', frameRate:'Frame Rate', temperature:'Temperature', tint:'Tint', saturation:'Saturation', contrast:'Contrast', pivot:'Pivot', lift:'Lift', gamma:'Gamma', gain:'Gain', natural:'Natural', film:'Film', cinematic:'Cinematic', portrait:'Portrait', night:'Night', golden:'Golden', videoSaved:'✓ Video saved', camUnavailable:'Camera unavailable', apiKey:'Anthropic API Key', apiHint:'Get key: console.anthropic.com', vignette:'Vignette', filmGrain:'Film Grain', hue:'Hue', red:'R', green:'G', blue:'B', scenarios:'Scenarios', scNight:'Night Street', scPortrait:'Portrait', scGolden:'Golden Hour', scInterview:'Interview', scFood:'Food', scBlog:'Home Vlog', scApplied:'applied',
     homeGreeting:'Hello, creator!', homeSub:'What are we filming today?', qsBadge:'Quick start', qsTitle:'AI Camera Operator', qsDesc:'Open the camera and let AI tune the cinematic look automatically.', qsBtn:'Open camera', tipsH:'Useful', seeAll:'See all', presetsSub:'Ready-made professional setups', learnTitle:'Learn', learnSub:'Short guides to shoot better', profileTitle:'Profile', profileSub:'Settings & preferences', langLabel:'Language', tabHome:'Home', tabPresets:'Presets', tabLearn:'Learn', tabProfile:'Profile',
-    tipShakyT:'Why is video shaky?', tipShakyD:'5 tips for smoother footage', tipExpoT:'How to set exposure', tipExpoD:'Keep the histogram in range', tipLogT:'Why shoot in Log', tipLogD:'More dynamic range to grade', tipFpsT:'How to choose FPS', tipFpsD:'24 for cinema, 60 for slow-mo', tipBokehT:'How to blur the background', tipBokehD:'Distance, light and lens choice', expoOk:'Exposure OK', expoBright:'Too bright', expoDark:'Too dark' },
+    tipShakyT:'Why is video shaky?', tipShakyD:'5 tips for smoother footage', tipExpoT:'How to set exposure', tipExpoD:'Keep the histogram in range', tipLogT:'Why shoot in Log', tipLogD:'More dynamic range to grade', tipFpsT:'How to choose FPS', tipFpsD:'24 for cinema, 60 for slow-mo', tipBokehT:'How to blur the background', tipBokehD:'Distance, light and lens choice', expoOk:'Exposure OK', expoBright:'Too bright', expoDark:'Too dark', before:'BEFORE', after:'AFTER' },
   ru: { chooseLanguage:'Выберите язык', aiAuto:'ИИ АВТО', aiOff:'ИИ ВЫКЛ', aiControlling:'ИИ управляет', takeManual:'Взять управление', letAI:'Доверить ИИ', manual:'РУЧНОЙ', settings:'Настройки', save:'Сохранить', reset:'Сбросить', exposure:'Экспозиция', whiteBalance:'Баланс белого', color:'Цвет', grade:'Грейдинг', lut:'LUT', iso:'ISO', shutter:'Затвор', frameRate:'Частота кадров', temperature:'Температура', tint:'Оттенок', saturation:'Насыщенность', contrast:'Контраст', pivot:'Опора', lift:'Лифт', gamma:'Гамма', gain:'Гейн', natural:'Нейтральный', film:'Плёнка', cinematic:'Кино', portrait:'Портрет', night:'Ночь', golden:'Золотой', videoSaved:'✓ Видео сохранено', camUnavailable:'Камера недоступна', apiKey:'Ключ Anthropic API', apiHint:'Получить: console.anthropic.com', vignette:'Виньетка', filmGrain:'Зерно', hue:'Тон', red:'К', green:'З', blue:'С', scenarios:'Сценарии', scNight:'Ночная улица', scPortrait:'Портрет', scGolden:'Закат', scInterview:'Интервью', scFood:'Еда', scBlog:'Влог дома', scApplied:'применён',
     homeGreeting:'Привет, создатель!', homeSub:'Что будем снимать сегодня?', qsBadge:'Быстрый старт', qsTitle:'ИИ-оператор камеры', qsDesc:'Открой камеру и доверь ИИ выставить киношный вид автоматически.', qsBtn:'Открыть камеру', tipsH:'Полезное', seeAll:'Все', presetsSub:'Готовые профессиональные настройки', learnTitle:'Обучение', learnSub:'Короткие гайды, чтобы снимать лучше', profileTitle:'Профиль', profileSub:'Настройки и параметры', langLabel:'Язык', tabHome:'Главная', tabPresets:'Пресеты', tabLearn:'Обучение', tabProfile:'Профиль',
-    tipShakyT:'Почему видео дёргается?', tipShakyD:'5 советов для плавности', tipExpoT:'Как настроить экспозицию', tipExpoD:'Держи гистограмму в диапазоне', tipLogT:'Зачем снимать в Log', tipLogD:'Больше запаса для цветокоррекции', tipFpsT:'Как выбрать FPS', tipFpsD:'24 для кино, 60 для слоумо', tipBokehT:'Как размыть фон', tipBokehD:'Дистанция, свет и выбор линзы', expoOk:'Экспозиция в норме', expoBright:'Слишком светло', expoDark:'Слишком тёмно' },
+    tipShakyT:'Почему видео дёргается?', tipShakyD:'5 советов для плавности', tipExpoT:'Как настроить экспозицию', tipExpoD:'Держи гистограмму в диапазоне', tipLogT:'Зачем снимать в Log', tipLogD:'Больше запаса для цветокоррекции', tipFpsT:'Как выбрать FPS', tipFpsD:'24 для кино, 60 для слоумо', tipBokehT:'Как размыть фон', tipBokehD:'Дистанция, свет и выбор линзы', expoOk:'Экспозиция в норме', expoBright:'Слишком светло', expoDark:'Слишком тёмно', before:'ДО', after:'ПОСЛЕ' },
   de: { chooseLanguage:'Sprache wählen', aiAuto:'KI AUTO', aiOff:'KI AUS', aiControlling:'KI steuert', takeManual:'Manuell', letAI:'KI überlassen', manual:'MANUELL', settings:'Einstellungen', save:'Speichern', reset:'Zurücksetzen', exposure:'Belichtung', whiteBalance:'Weißabgleich', color:'Farbe', grade:'Grading', lut:'LUT', iso:'ISO', shutter:'Verschluss', frameRate:'Bildrate', temperature:'Temperatur', tint:'Tönung', saturation:'Sättigung', contrast:'Kontrast', pivot:'Pivot', lift:'Lift', gamma:'Gamma', gain:'Gain', natural:'Natürlich', film:'Film', cinematic:'Kino', portrait:'Porträt', night:'Nacht', golden:'Golden', videoSaved:'✓ Video gespeichert', camUnavailable:'Kamera nicht verfügbar', apiKey:'Anthropic API-Schlüssel', apiHint:'Schlüssel: console.anthropic.com', vignette:'Vignette', filmGrain:'Filmkorn', hue:'Farbton', red:'R', green:'G', blue:'B' },
   fr: { chooseLanguage:'Choisissez votre langue', aiAuto:'IA AUTO', aiOff:'IA OFF', aiControlling:"L'IA contrôle", takeManual:'Contrôle manuel', letAI:"Laisser l'IA", manual:'MANUEL', settings:'Paramètres', save:'Enregistrer', reset:'Réinitialiser', exposure:'Exposition', whiteBalance:'Balance des blancs', color:'Couleur', grade:'Étalonnage', lut:'LUT', iso:'ISO', shutter:'Obturateur', frameRate:'Fréq. images', temperature:'Température', tint:'Teinte', saturation:'Saturation', contrast:'Contraste', pivot:'Pivot', lift:'Lift', gamma:'Gamma', gain:'Gain', natural:'Naturel', film:'Film', cinematic:'Cinéma', portrait:'Portrait', night:'Nuit', golden:'Doré', videoSaved:'✓ Vidéo sauvegardée', camUnavailable:'Caméra indisponible', apiKey:'Clé API Anthropic', apiHint:'Obtenir: console.anthropic.com', vignette:'Vignette', filmGrain:'Grain', hue:'Teinte', red:'R', green:'V', blue:'B' },
   es: { chooseLanguage:'Elige tu idioma', aiAuto:'IA AUTO', aiOff:'IA OFF', aiControlling:'IA controlando', takeManual:'Control manual', letAI:'Dejar a la IA', manual:'MANUAL', settings:'Ajustes', save:'Guardar', reset:'Restablecer', exposure:'Exposición', whiteBalance:'Balance de blancos', color:'Color', grade:'Gradación', lut:'LUT', iso:'ISO', shutter:'Obturador', frameRate:'Fotogramas/s', temperature:'Temperatura', tint:'Tinte', saturation:'Saturación', contrast:'Contraste', pivot:'Pivote', lift:'Lift', gamma:'Gamma', gain:'Gain', natural:'Natural', film:'Película', cinematic:'Cinemático', portrait:'Retrato', night:'Noche', golden:'Dorado', videoSaved:'✓ Vídeo guardado', camUnavailable:'Cámara no disponible', apiKey:'Clave API Anthropic', apiHint:'Obtener: console.anthropic.com', vignette:'Viñeta', filmGrain:'Grano', hue:'Matiz', red:'R', green:'G', blue:'B' },
@@ -608,6 +624,7 @@ const S = {
   aiTimer: null,
   aiActive: false,
   renderRunning: false,
+  split: false,
   progressInterval: null,
   aiCycleStart: null,
   overlays: { grid:false, zebra:false, peaking:false, histogram:false },
@@ -763,6 +780,7 @@ function leaveCamera() {
   hideAIInsight();
   document.getElementById('ai-score-pill').classList.add('hidden');
   document.getElementById('expo-indicator').classList.add('hidden');
+  if (S.split) toggleSplit();
   lastInsight = null;
   S.renderRunning = false;
   if (S.animFrame) cancelAnimationFrame(S.animFrame);
@@ -784,6 +802,7 @@ async function initCamera() {
       audio: true,
     });
     document.getElementById('video').srcObject = S.stream;
+    if (S.split) { const r = document.getElementById('video-raw'); r.srcObject = S.stream; r.play().catch(() => {}); }
     document.getElementById('screen-perm').classList.add('hidden');
     if (!S.renderRunning) startRenderLoop();
     scheduleAI(1200);
@@ -826,6 +845,26 @@ function toggleOverlay(name) {
   document.getElementById('btn-' + name).classList.toggle('active', S.overlays[name]);
   if (name === 'grid') document.getElementById('grid-overlay').classList.toggle('hidden', !S.overlays.grid);
   if (name === 'histogram') document.getElementById('histogram-widget').classList.toggle('show', S.overlays.histogram);
+}
+
+// ─── Before / After split view ───────────────────────────────────────────────
+function toggleSplit() {
+  S.split = !S.split;
+  const raw = document.getElementById('video-raw');
+  const ui  = document.getElementById('split-ui');
+  document.getElementById('btn-split').classList.toggle('active', S.split);
+  if (S.split) {
+    raw.srcObject = S.stream;
+    raw.play().catch(() => {});
+    raw.classList.add('show');
+    document.getElementById('split-before').textContent = t('before');
+    document.getElementById('split-after').textContent = t('after');
+    ui.classList.remove('hidden');
+  } else {
+    raw.classList.remove('show');
+    raw.srcObject = null;
+    ui.classList.add('hidden');
+  }
 }
 
 // ─── Recording ────────────────────────────────────────────────────────────────
