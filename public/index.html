@@ -256,6 +256,26 @@
     .prof-row .pr-val { font-size: 13px; color: rgba(255,255,255,0.4); }
     .lang-select { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: #fff; padding: 8px 12px; font-family: inherit; font-size: 14px; outline: none; }
 
+    /* History clips */
+    .clip-card { display: flex; gap: 12px; align-items: center; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; padding: 9px; margin-bottom: 10px; cursor: pointer; transition: background 0.15s; }
+    .clip-card:active { background: rgba(255,255,255,0.1); }
+    .clip-thumb { width: 76px; height: 48px; border-radius: 9px; object-fit: cover; background: #000; flex-shrink: 0; position: relative; }
+    .clip-thumb-wrap { position: relative; flex-shrink: 0; }
+    .clip-play { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.9); font-size: 18px; text-shadow: 0 1px 4px rgba(0,0,0,0.7); }
+    .clip-meta { flex: 1; }
+    .clip-date { font-size: 14px; font-weight: 600; color: #fff; }
+    .clip-dur { font-size: 12px; color: rgba(255,255,255,0.45); margin-top: 2px; font-variant-numeric: tabular-nums; }
+    .clip-empty { font-size: 13px; color: rgba(255,255,255,0.35); padding: 8px 2px; }
+
+    /* Clip modal */
+    #clip-modal { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; }
+    #clip-modal.hidden { display: none; }
+    .clip-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); }
+    .clip-sheet { position: relative; z-index: 1; width: 92%; max-width: 460px; background: #141414; border-radius: 18px; padding: 16px; border: 1px solid rgba(255,255,255,0.08); }
+    #clip-video { width: 100%; border-radius: 12px; background: #000; max-height: 60vh; }
+    .clip-actions { display: flex; gap: 10px; margin-top: 14px; }
+    .clip-close { position: absolute; top: -12px; right: -12px; width: 32px; height: 32px; border-radius: 50%; background: #222; border: 1px solid rgba(255,255,255,0.15); color: #fff; font-size: 14px; cursor: pointer; }
+
     /* ════ Bottom tab bar ════ */
     #tab-bar { display: flex; align-items: center; justify-content: space-around; background: rgba(14,15,17,0.92); backdrop-filter: blur(20px); border-top: 1px solid rgba(255,255,255,0.07); padding: 8px 6px calc(env(safe-area-inset-bottom,12px) + 8px); }
     .tab-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; background: none; border: none; color: rgba(255,255,255,0.4); font-family: inherit; cursor: pointer; padding: 4px 0; transition: color 0.18s; }
@@ -469,6 +489,9 @@
         <input type="password" class="field" id="profile-api-field" placeholder="sk-ant-...">
         <div class="field-hint" id="profile-api-hint" data-t="apiHint">Stored only in your browser.</div>
         <button class="save-btn" onclick="saveProfileKey()" data-t="save">Save</button>
+
+        <div class="hub-h2" style="margin-top:28px"><span id="history-h">Recordings</span></div>
+        <div id="history-list"></div>
       </div>
     </div>
   </div>
@@ -481,6 +504,19 @@
     <button class="tab-btn" data-tab="learn" onclick="switchTab('learn')"><span class="tb-ic">▤</span><span class="tb-lb" id="tab-learn">Learn</span></button>
     <button class="tab-btn" data-tab="profile" onclick="switchTab('profile')"><span class="tb-ic">○</span><span class="tb-lb" id="tab-profile">Profile</span></button>
   </nav>
+</div>
+
+<!-- Clip player modal -->
+<div id="clip-modal" class="hidden">
+  <div class="clip-backdrop" onclick="closeClip()"></div>
+  <div class="clip-sheet">
+    <video id="clip-video" controls playsinline></video>
+    <div class="clip-actions">
+      <button class="footer-btn btn-ghost" onclick="downloadClip()" id="clip-dl">Download</button>
+      <button class="footer-btn" style="background:rgba(255,69,58,0.18);color:#ff6b60" onclick="deleteClip()" id="clip-del">Delete</button>
+    </div>
+    <button class="clip-close" onclick="closeClip()">✕</button>
+  </div>
 </div>
 
 <!-- PANEL: Manual controls -->
@@ -522,10 +558,10 @@
 const T = {
   en: { chooseLanguage:'Choose your language', aiAuto:'AI AUTO', aiOff:'AI OFF', aiControlling:'AI is controlling', takeManual:'Take manual control', letAI:'Let AI take over', manual:'MANUAL', settings:'Settings', save:'Save', reset:'Reset', exposure:'Exposure', whiteBalance:'White Balance', color:'Color', grade:'Grade', lut:'LUT', iso:'ISO', shutter:'Shutter', frameRate:'Frame Rate', temperature:'Temperature', tint:'Tint', saturation:'Saturation', contrast:'Contrast', pivot:'Pivot', lift:'Lift', gamma:'Gamma', gain:'Gain', natural:'Natural', film:'Film', cinematic:'Cinematic', portrait:'Portrait', night:'Night', golden:'Golden', videoSaved:'✓ Video saved', camUnavailable:'Camera unavailable', apiKey:'Anthropic API Key', apiHint:'Get key: console.anthropic.com', vignette:'Vignette', filmGrain:'Film Grain', hue:'Hue', red:'R', green:'G', blue:'B', scenarios:'Scenarios', scNight:'Night Street', scPortrait:'Portrait', scGolden:'Golden Hour', scInterview:'Interview', scFood:'Food', scBlog:'Home Vlog', scApplied:'applied',
     homeGreeting:'Hello, creator!', homeSub:'What are we filming today?', qsBadge:'Quick start', qsTitle:'AI Camera Operator', qsDesc:'Open the camera and let AI tune the cinematic look automatically.', qsBtn:'Open camera', tipsH:'Useful', seeAll:'See all', presetsSub:'Ready-made professional setups', learnTitle:'Learn', learnSub:'Short guides to shoot better', profileTitle:'Profile', profileSub:'Settings & preferences', langLabel:'Language', tabHome:'Home', tabPresets:'Presets', tabLearn:'Learn', tabProfile:'Profile',
-    tipShakyT:'Why is video shaky?', tipShakyD:'5 tips for smoother footage', tipExpoT:'How to set exposure', tipExpoD:'Keep the histogram in range', tipLogT:'Why shoot in Log', tipLogD:'More dynamic range to grade', tipFpsT:'How to choose FPS', tipFpsD:'24 for cinema, 60 for slow-mo', tipBokehT:'How to blur the background', tipBokehD:'Distance, light and lens choice', expoOk:'Exposure OK', expoBright:'Too bright', expoDark:'Too dark', before:'BEFORE', after:'AFTER' },
+    tipShakyT:'Why is video shaky?', tipShakyD:'5 tips for smoother footage', tipExpoT:'How to set exposure', tipExpoD:'Keep the histogram in range', tipLogT:'Why shoot in Log', tipLogD:'More dynamic range to grade', tipFpsT:'How to choose FPS', tipFpsD:'24 for cinema, 60 for slow-mo', tipBokehT:'How to blur the background', tipBokehD:'Distance, light and lens choice', expoOk:'Exposure OK', expoBright:'Too bright', expoDark:'Too dark', before:'BEFORE', after:'AFTER', historyH:'Recordings', noClips:'No recordings yet', download:'Download', deleteClip:'Delete' },
   ru: { chooseLanguage:'Выберите язык', aiAuto:'ИИ АВТО', aiOff:'ИИ ВЫКЛ', aiControlling:'ИИ управляет', takeManual:'Взять управление', letAI:'Доверить ИИ', manual:'РУЧНОЙ', settings:'Настройки', save:'Сохранить', reset:'Сбросить', exposure:'Экспозиция', whiteBalance:'Баланс белого', color:'Цвет', grade:'Грейдинг', lut:'LUT', iso:'ISO', shutter:'Затвор', frameRate:'Частота кадров', temperature:'Температура', tint:'Оттенок', saturation:'Насыщенность', contrast:'Контраст', pivot:'Опора', lift:'Лифт', gamma:'Гамма', gain:'Гейн', natural:'Нейтральный', film:'Плёнка', cinematic:'Кино', portrait:'Портрет', night:'Ночь', golden:'Золотой', videoSaved:'✓ Видео сохранено', camUnavailable:'Камера недоступна', apiKey:'Ключ Anthropic API', apiHint:'Получить: console.anthropic.com', vignette:'Виньетка', filmGrain:'Зерно', hue:'Тон', red:'К', green:'З', blue:'С', scenarios:'Сценарии', scNight:'Ночная улица', scPortrait:'Портрет', scGolden:'Закат', scInterview:'Интервью', scFood:'Еда', scBlog:'Влог дома', scApplied:'применён',
     homeGreeting:'Привет, создатель!', homeSub:'Что будем снимать сегодня?', qsBadge:'Быстрый старт', qsTitle:'ИИ-оператор камеры', qsDesc:'Открой камеру и доверь ИИ выставить киношный вид автоматически.', qsBtn:'Открыть камеру', tipsH:'Полезное', seeAll:'Все', presetsSub:'Готовые профессиональные настройки', learnTitle:'Обучение', learnSub:'Короткие гайды, чтобы снимать лучше', profileTitle:'Профиль', profileSub:'Настройки и параметры', langLabel:'Язык', tabHome:'Главная', tabPresets:'Пресеты', tabLearn:'Обучение', tabProfile:'Профиль',
-    tipShakyT:'Почему видео дёргается?', tipShakyD:'5 советов для плавности', tipExpoT:'Как настроить экспозицию', tipExpoD:'Держи гистограмму в диапазоне', tipLogT:'Зачем снимать в Log', tipLogD:'Больше запаса для цветокоррекции', tipFpsT:'Как выбрать FPS', tipFpsD:'24 для кино, 60 для слоумо', tipBokehT:'Как размыть фон', tipBokehD:'Дистанция, свет и выбор линзы', expoOk:'Экспозиция в норме', expoBright:'Слишком светло', expoDark:'Слишком тёмно', before:'ДО', after:'ПОСЛЕ' },
+    tipShakyT:'Почему видео дёргается?', tipShakyD:'5 советов для плавности', tipExpoT:'Как настроить экспозицию', tipExpoD:'Держи гистограмму в диапазоне', tipLogT:'Зачем снимать в Log', tipLogD:'Больше запаса для цветокоррекции', tipFpsT:'Как выбрать FPS', tipFpsD:'24 для кино, 60 для слоумо', tipBokehT:'Как размыть фон', tipBokehD:'Дистанция, свет и выбор линзы', expoOk:'Экспозиция в норме', expoBright:'Слишком светло', expoDark:'Слишком тёмно', before:'ДО', after:'ПОСЛЕ', historyH:'Записи', noClips:'Пока нет записей', download:'Скачать', deleteClip:'Удалить' },
   de: { chooseLanguage:'Sprache wählen', aiAuto:'KI AUTO', aiOff:'KI AUS', aiControlling:'KI steuert', takeManual:'Manuell', letAI:'KI überlassen', manual:'MANUELL', settings:'Einstellungen', save:'Speichern', reset:'Zurücksetzen', exposure:'Belichtung', whiteBalance:'Weißabgleich', color:'Farbe', grade:'Grading', lut:'LUT', iso:'ISO', shutter:'Verschluss', frameRate:'Bildrate', temperature:'Temperatur', tint:'Tönung', saturation:'Sättigung', contrast:'Kontrast', pivot:'Pivot', lift:'Lift', gamma:'Gamma', gain:'Gain', natural:'Natürlich', film:'Film', cinematic:'Kino', portrait:'Porträt', night:'Nacht', golden:'Golden', videoSaved:'✓ Video gespeichert', camUnavailable:'Kamera nicht verfügbar', apiKey:'Anthropic API-Schlüssel', apiHint:'Schlüssel: console.anthropic.com', vignette:'Vignette', filmGrain:'Filmkorn', hue:'Farbton', red:'R', green:'G', blue:'B' },
   fr: { chooseLanguage:'Choisissez votre langue', aiAuto:'IA AUTO', aiOff:'IA OFF', aiControlling:"L'IA contrôle", takeManual:'Contrôle manuel', letAI:"Laisser l'IA", manual:'MANUEL', settings:'Paramètres', save:'Enregistrer', reset:'Réinitialiser', exposure:'Exposition', whiteBalance:'Balance des blancs', color:'Couleur', grade:'Étalonnage', lut:'LUT', iso:'ISO', shutter:'Obturateur', frameRate:'Fréq. images', temperature:'Température', tint:'Teinte', saturation:'Saturation', contrast:'Contraste', pivot:'Pivot', lift:'Lift', gamma:'Gamma', gain:'Gain', natural:'Naturel', film:'Film', cinematic:'Cinéma', portrait:'Portrait', night:'Nuit', golden:'Doré', videoSaved:'✓ Vidéo sauvegardée', camUnavailable:'Caméra indisponible', apiKey:'Clé API Anthropic', apiHint:'Obtenir: console.anthropic.com', vignette:'Vignette', filmGrain:'Grain', hue:'Teinte', red:'R', green:'V', blue:'B' },
   es: { chooseLanguage:'Elige tu idioma', aiAuto:'IA AUTO', aiOff:'IA OFF', aiControlling:'IA controlando', takeManual:'Control manual', letAI:'Dejar a la IA', manual:'MANUAL', settings:'Ajustes', save:'Guardar', reset:'Restablecer', exposure:'Exposición', whiteBalance:'Balance de blancos', color:'Color', grade:'Gradación', lut:'LUT', iso:'ISO', shutter:'Obturador', frameRate:'Fotogramas/s', temperature:'Temperatura', tint:'Tinte', saturation:'Saturación', contrast:'Contraste', pivot:'Pivote', lift:'Lift', gamma:'Gamma', gain:'Gain', natural:'Natural', film:'Película', cinematic:'Cinemático', portrait:'Retrato', night:'Noche', golden:'Dorado', videoSaved:'✓ Vídeo guardado', camUnavailable:'Cámara no disponible', apiKey:'Clave API Anthropic', apiHint:'Obtener: console.anthropic.com', vignette:'Viñeta', filmGrain:'Grano', hue:'Matiz', red:'R', green:'G', blue:'B' },
@@ -746,6 +782,9 @@ function buildProfile() {
     sel.appendChild(o);
   });
   document.getElementById('profile-api-field').value = S.apiKey || '';
+  const hH = document.getElementById('history-h');
+  if (hH) hH.textContent = t('historyH');
+  buildHistory();
 }
 
 function changeLanguage(code) {
@@ -880,6 +919,7 @@ function startRecord() {
   S.recorder.onstop = () => {
     S.lastBlob = new Blob(S.chunks, { type: S.recorder.mimeType });
     saveVideo();
+    historyAdd({ id: Date.now(), blob: S.lastBlob, thumb: S.lastThumb || '', duration: S.lastDuration || 0, date: Date.now(), type: S.lastBlob.type });
   };
   S.recorder.start(1000);
   S.isRecording = true;
@@ -890,6 +930,17 @@ function startRecord() {
 }
 
 function stopRecord() {
+  // Capture thumbnail + duration before the stream is touched.
+  S.lastDuration = Date.now() - (S.recStart || Date.now());
+  try {
+    const v = document.getElementById('video');
+    if (v.videoWidth) {
+      const tc = document.createElement('canvas');
+      tc.width = 160; tc.height = 90;
+      tc.getContext('2d').drawImage(v, 0, 0, 160, 90);
+      S.lastThumb = tc.toDataURL('image/jpeg', 0.6);
+    }
+  } catch { S.lastThumb = ''; }
   if (S.recorder?.state !== 'inactive') S.recorder.stop();
   S.isRecording = false;
   clearInterval(S.recTick);
@@ -925,6 +976,122 @@ async function saveVideo() {
   a.href = url; a.download = fileName; a.click();
   setTimeout(() => URL.revokeObjectURL(url), 5000);
   toast(t('videoSaved'));
+}
+
+// ─── Recording history (IndexedDB) ────────────────────────────────────────────
+function idbOpen() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open('ailens', 1);
+    r.onupgradeneeded = () => { if (!r.result.objectStoreNames.contains('clips')) r.result.createObjectStore('clips', { keyPath: 'id' }); };
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+
+async function historyAdd(rec) {
+  try {
+    const db = await idbOpen();
+    await new Promise((res, rej) => {
+      const tx = db.transaction('clips', 'readwrite');
+      tx.objectStore('clips').put(rec);
+      tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+    });
+    await historyPrune(12);
+  } catch (e) { /* storage may be unavailable */ }
+}
+
+async function historyAll() {
+  try {
+    const db = await idbOpen();
+    return await new Promise((res) => {
+      const out = [];
+      const tx = db.transaction('clips', 'readonly');
+      tx.objectStore('clips').openCursor().onsuccess = e => {
+        const c = e.target.result;
+        if (c) { out.push(c.value); c.continue(); } else res(out.sort((a, b) => b.id - a.id));
+      };
+    });
+  } catch { return []; }
+}
+
+async function historyDelete(id) {
+  try {
+    const db = await idbOpen();
+    await new Promise((res) => { const tx = db.transaction('clips', 'readwrite'); tx.objectStore('clips').delete(id); tx.oncomplete = res; });
+  } catch {}
+}
+
+async function historyPrune(keep) {
+  const all = await historyAll();
+  for (const c of all.slice(keep)) await historyDelete(c.id);
+}
+
+async function buildHistory() {
+  const box = document.getElementById('history-list');
+  if (!box) return;
+  const clips = await historyAll();
+  box.innerHTML = '';
+  if (!clips.length) {
+    box.innerHTML = '<div class="clip-empty">' + t('noClips') + '</div>';
+    return;
+  }
+  clips.forEach(c => {
+    const card = document.createElement('div');
+    card.className = 'clip-card';
+    const d = new Date(c.date);
+    const dateStr = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const dur = Math.round((c.duration || 0) / 1000);
+    const durStr = Math.floor(dur / 60) + ':' + String(dur % 60).padStart(2, '0');
+    card.innerHTML =
+      '<div class="clip-thumb-wrap">' +
+        (c.thumb ? '<img class="clip-thumb" src="' + c.thumb + '">' : '<div class="clip-thumb"></div>') +
+        '<div class="clip-play">▶</div></div>' +
+      '<div class="clip-meta"><div class="clip-date">' + dateStr + '</div>' +
+      '<div class="clip-dur">' + durStr + '</div></div>';
+    card.onclick = () => openClip(c.id);
+    box.appendChild(card);
+  });
+}
+
+// ─── Clip player modal ────────────────────────────────────────────────────────
+let curClip = null, curClipUrl = null;
+
+async function openClip(id) {
+  const clips = await historyAll();
+  const c = clips.find(x => x.id === id);
+  if (!c) return;
+  curClip = c;
+  if (curClipUrl) URL.revokeObjectURL(curClipUrl);
+  curClipUrl = URL.createObjectURL(c.blob);
+  const v = document.getElementById('clip-video');
+  v.src = curClipUrl;
+  document.getElementById('clip-dl').textContent = t('download');
+  document.getElementById('clip-del').textContent = t('deleteClip');
+  document.getElementById('clip-modal').classList.remove('hidden');
+  v.play().catch(() => {});
+}
+
+function closeClip() {
+  const v = document.getElementById('clip-video');
+  v.pause(); v.removeAttribute('src'); v.load();
+  if (curClipUrl) { URL.revokeObjectURL(curClipUrl); curClipUrl = null; }
+  document.getElementById('clip-modal').classList.add('hidden');
+}
+
+function downloadClip() {
+  if (!curClip) return;
+  const ext = (curClip.type || '').includes('mp4') ? 'mp4' : 'webm';
+  const url = URL.createObjectURL(curClip.blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'ailens-' + curClip.id + '.' + ext; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+async function deleteClip() {
+  if (!curClip) return;
+  await historyDelete(curClip.id);
+  closeClip();
+  buildHistory();
 }
 
 // ─── AI mode ──────────────────────────────────────────────────────────────────
