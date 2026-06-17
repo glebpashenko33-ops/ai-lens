@@ -56,6 +56,18 @@
     #ai-score-pill { display: flex; align-items: center; gap: 3px; background: rgba(14,15,17,0.7); border: 1px solid rgba(245,185,66,0.4); border-radius: 20px; padding: 2px 8px; font-size: 10px; font-weight: 700; color: #f5b942; cursor: pointer; backdrop-filter: blur(8px); }
     #ai-score-pill::before { content: '★'; font-size: 9px; }
 
+    /* Exposure indicator */
+    #expo-indicator { position: absolute; top: calc(env(safe-area-inset-top,20px) + 96px); right: 14px; z-index: 10; display: flex; align-items: center; gap: 6px; background: rgba(14,15,17,0.7); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 4px 10px 4px 8px; backdrop-filter: blur(10px); transition: border-color 0.3s; }
+    #expo-indicator.hidden { display: none; }
+    .expo-dot { width: 8px; height: 8px; border-radius: 50%; transition: background 0.3s, box-shadow 0.3s; }
+    .expo-txt { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.8); white-space: nowrap; }
+    #expo-indicator.ok    { border-color: rgba(48,209,88,0.4); }
+    #expo-indicator.ok    .expo-dot { background: #30d158; box-shadow: 0 0 6px #30d158; }
+    #expo-indicator.warn  { border-color: rgba(245,185,66,0.5); }
+    #expo-indicator.warn  .expo-dot { background: #f5b942; box-shadow: 0 0 6px #f5b942; }
+    #expo-indicator.err   { border-color: rgba(255,69,58,0.5); }
+    #expo-indicator.err   .expo-dot { background: #ff453a; box-shadow: 0 0 6px #ff453a; }
+
     /* AI insight card */
     #ai-insight { position: absolute; top: calc(env(safe-area-inset-top,20px) + 134px); left: 14px; right: 14px; z-index: 12; background: rgba(14,15,17,0.86); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 13px 14px; backdrop-filter: blur(18px); box-shadow: 0 6px 24px rgba(0,0,0,0.5); opacity: 1; transition: opacity 0.3s, transform 0.3s; }
     #ai-insight.hidden { display: block !important; opacity: 0; transform: translateY(-8px); pointer-events: none; }
@@ -343,6 +355,12 @@
     <div class="rec-tc" id="rec-tc">00:00:00:00</div>
   </div>
 
+  <!-- Exposure indicator -->
+  <div id="expo-indicator" class="hidden ok">
+    <div class="expo-dot"></div>
+    <div class="expo-txt" id="expo-txt">Exposure OK</div>
+  </div>
+
   <!-- Bottom area -->
   <div id="bottom-area">
     <!-- Scenario presets strip -->
@@ -488,10 +506,10 @@
 const T = {
   en: { chooseLanguage:'Choose your language', aiAuto:'AI AUTO', aiOff:'AI OFF', aiControlling:'AI is controlling', takeManual:'Take manual control', letAI:'Let AI take over', manual:'MANUAL', settings:'Settings', save:'Save', reset:'Reset', exposure:'Exposure', whiteBalance:'White Balance', color:'Color', grade:'Grade', lut:'LUT', iso:'ISO', shutter:'Shutter', frameRate:'Frame Rate', temperature:'Temperature', tint:'Tint', saturation:'Saturation', contrast:'Contrast', pivot:'Pivot', lift:'Lift', gamma:'Gamma', gain:'Gain', natural:'Natural', film:'Film', cinematic:'Cinematic', portrait:'Portrait', night:'Night', golden:'Golden', videoSaved:'✓ Video saved', camUnavailable:'Camera unavailable', apiKey:'Anthropic API Key', apiHint:'Get key: console.anthropic.com', vignette:'Vignette', filmGrain:'Film Grain', hue:'Hue', red:'R', green:'G', blue:'B', scenarios:'Scenarios', scNight:'Night Street', scPortrait:'Portrait', scGolden:'Golden Hour', scInterview:'Interview', scFood:'Food', scBlog:'Home Vlog', scApplied:'applied',
     homeGreeting:'Hello, creator!', homeSub:'What are we filming today?', qsBadge:'Quick start', qsTitle:'AI Camera Operator', qsDesc:'Open the camera and let AI tune the cinematic look automatically.', qsBtn:'Open camera', tipsH:'Useful', seeAll:'See all', presetsSub:'Ready-made professional setups', learnTitle:'Learn', learnSub:'Short guides to shoot better', profileTitle:'Profile', profileSub:'Settings & preferences', langLabel:'Language', tabHome:'Home', tabPresets:'Presets', tabLearn:'Learn', tabProfile:'Profile',
-    tipShakyT:'Why is video shaky?', tipShakyD:'5 tips for smoother footage', tipExpoT:'How to set exposure', tipExpoD:'Keep the histogram in range', tipLogT:'Why shoot in Log', tipLogD:'More dynamic range to grade', tipFpsT:'How to choose FPS', tipFpsD:'24 for cinema, 60 for slow-mo', tipBokehT:'How to blur the background', tipBokehD:'Distance, light and lens choice' },
+    tipShakyT:'Why is video shaky?', tipShakyD:'5 tips for smoother footage', tipExpoT:'How to set exposure', tipExpoD:'Keep the histogram in range', tipLogT:'Why shoot in Log', tipLogD:'More dynamic range to grade', tipFpsT:'How to choose FPS', tipFpsD:'24 for cinema, 60 for slow-mo', tipBokehT:'How to blur the background', tipBokehD:'Distance, light and lens choice', expoOk:'Exposure OK', expoBright:'Too bright', expoDark:'Too dark' },
   ru: { chooseLanguage:'Выберите язык', aiAuto:'ИИ АВТО', aiOff:'ИИ ВЫКЛ', aiControlling:'ИИ управляет', takeManual:'Взять управление', letAI:'Доверить ИИ', manual:'РУЧНОЙ', settings:'Настройки', save:'Сохранить', reset:'Сбросить', exposure:'Экспозиция', whiteBalance:'Баланс белого', color:'Цвет', grade:'Грейдинг', lut:'LUT', iso:'ISO', shutter:'Затвор', frameRate:'Частота кадров', temperature:'Температура', tint:'Оттенок', saturation:'Насыщенность', contrast:'Контраст', pivot:'Опора', lift:'Лифт', gamma:'Гамма', gain:'Гейн', natural:'Нейтральный', film:'Плёнка', cinematic:'Кино', portrait:'Портрет', night:'Ночь', golden:'Золотой', videoSaved:'✓ Видео сохранено', camUnavailable:'Камера недоступна', apiKey:'Ключ Anthropic API', apiHint:'Получить: console.anthropic.com', vignette:'Виньетка', filmGrain:'Зерно', hue:'Тон', red:'К', green:'З', blue:'С', scenarios:'Сценарии', scNight:'Ночная улица', scPortrait:'Портрет', scGolden:'Закат', scInterview:'Интервью', scFood:'Еда', scBlog:'Влог дома', scApplied:'применён',
     homeGreeting:'Привет, создатель!', homeSub:'Что будем снимать сегодня?', qsBadge:'Быстрый старт', qsTitle:'ИИ-оператор камеры', qsDesc:'Открой камеру и доверь ИИ выставить киношный вид автоматически.', qsBtn:'Открыть камеру', tipsH:'Полезное', seeAll:'Все', presetsSub:'Готовые профессиональные настройки', learnTitle:'Обучение', learnSub:'Короткие гайды, чтобы снимать лучше', profileTitle:'Профиль', profileSub:'Настройки и параметры', langLabel:'Язык', tabHome:'Главная', tabPresets:'Пресеты', tabLearn:'Обучение', tabProfile:'Профиль',
-    tipShakyT:'Почему видео дёргается?', tipShakyD:'5 советов для плавности', tipExpoT:'Как настроить экспозицию', tipExpoD:'Держи гистограмму в диапазоне', tipLogT:'Зачем снимать в Log', tipLogD:'Больше запаса для цветокоррекции', tipFpsT:'Как выбрать FPS', tipFpsD:'24 для кино, 60 для слоумо', tipBokehT:'Как размыть фон', tipBokehD:'Дистанция, свет и выбор линзы' },
+    tipShakyT:'Почему видео дёргается?', tipShakyD:'5 советов для плавности', tipExpoT:'Как настроить экспозицию', tipExpoD:'Держи гистограмму в диапазоне', tipLogT:'Зачем снимать в Log', tipLogD:'Больше запаса для цветокоррекции', tipFpsT:'Как выбрать FPS', tipFpsD:'24 для кино, 60 для слоумо', tipBokehT:'Как размыть фон', tipBokehD:'Дистанция, свет и выбор линзы', expoOk:'Экспозиция в норме', expoBright:'Слишком светло', expoDark:'Слишком тёмно' },
   de: { chooseLanguage:'Sprache wählen', aiAuto:'KI AUTO', aiOff:'KI AUS', aiControlling:'KI steuert', takeManual:'Manuell', letAI:'KI überlassen', manual:'MANUELL', settings:'Einstellungen', save:'Speichern', reset:'Zurücksetzen', exposure:'Belichtung', whiteBalance:'Weißabgleich', color:'Farbe', grade:'Grading', lut:'LUT', iso:'ISO', shutter:'Verschluss', frameRate:'Bildrate', temperature:'Temperatur', tint:'Tönung', saturation:'Sättigung', contrast:'Kontrast', pivot:'Pivot', lift:'Lift', gamma:'Gamma', gain:'Gain', natural:'Natürlich', film:'Film', cinematic:'Kino', portrait:'Porträt', night:'Nacht', golden:'Golden', videoSaved:'✓ Video gespeichert', camUnavailable:'Kamera nicht verfügbar', apiKey:'Anthropic API-Schlüssel', apiHint:'Schlüssel: console.anthropic.com', vignette:'Vignette', filmGrain:'Filmkorn', hue:'Farbton', red:'R', green:'G', blue:'B' },
   fr: { chooseLanguage:'Choisissez votre langue', aiAuto:'IA AUTO', aiOff:'IA OFF', aiControlling:"L'IA contrôle", takeManual:'Contrôle manuel', letAI:"Laisser l'IA", manual:'MANUEL', settings:'Paramètres', save:'Enregistrer', reset:'Réinitialiser', exposure:'Exposition', whiteBalance:'Balance des blancs', color:'Couleur', grade:'Étalonnage', lut:'LUT', iso:'ISO', shutter:'Obturateur', frameRate:'Fréq. images', temperature:'Température', tint:'Teinte', saturation:'Saturation', contrast:'Contraste', pivot:'Pivot', lift:'Lift', gamma:'Gamma', gain:'Gain', natural:'Naturel', film:'Film', cinematic:'Cinéma', portrait:'Portrait', night:'Nuit', golden:'Doré', videoSaved:'✓ Vidéo sauvegardée', camUnavailable:'Caméra indisponible', apiKey:'Clé API Anthropic', apiHint:'Obtenir: console.anthropic.com', vignette:'Vignette', filmGrain:'Grain', hue:'Teinte', red:'R', green:'V', blue:'B' },
   es: { chooseLanguage:'Elige tu idioma', aiAuto:'IA AUTO', aiOff:'IA OFF', aiControlling:'IA controlando', takeManual:'Control manual', letAI:'Dejar a la IA', manual:'MANUAL', settings:'Ajustes', save:'Guardar', reset:'Restablecer', exposure:'Exposición', whiteBalance:'Balance de blancos', color:'Color', grade:'Gradación', lut:'LUT', iso:'ISO', shutter:'Obturador', frameRate:'Fotogramas/s', temperature:'Temperatura', tint:'Tinte', saturation:'Saturación', contrast:'Contraste', pivot:'Pivote', lift:'Lift', gamma:'Gamma', gain:'Gain', natural:'Natural', film:'Película', cinematic:'Cinemático', portrait:'Retrato', night:'Noche', golden:'Dorado', videoSaved:'✓ Vídeo guardado', camUnavailable:'Cámara no disponible', apiKey:'Clave API Anthropic', apiHint:'Obtener: console.anthropic.com', vignette:'Viñeta', filmGrain:'Grano', hue:'Matiz', red:'R', green:'G', blue:'B' },
@@ -744,6 +762,7 @@ function leaveCamera() {
   if (S.isRecording) stopRecord();
   hideAIInsight();
   document.getElementById('ai-score-pill').classList.add('hidden');
+  document.getElementById('expo-indicator').classList.add('hidden');
   lastInsight = null;
   S.renderRunning = false;
   if (S.animFrame) cancelAnimationFrame(S.animFrame);
@@ -1187,6 +1206,8 @@ function startRenderLoop() {
       const hx = hc.getContext('2d');
       drawHistogram(hx, video, hc.width, hc.height);
     }
+
+    if (S.frameCount % 15 === 0 && video.videoWidth) analyzeExposure(video);
   }
   frame();
 }
@@ -1266,6 +1287,36 @@ function drawHistogram(ctx, video, w, h) {
   drawChan(r, 'rgba(255,70,70,0.8)');
   drawChan(g, 'rgba(70,220,70,0.8)');
   drawChan(b, 'rgba(70,130,255,0.8)');
+}
+
+// ─── Exposure analysis (green / yellow / red indicator) ───────────────────────
+let expoCanvas = null;
+function analyzeExposure(video) {
+  if (!video.videoWidth) return;
+  if (!expoCanvas) { expoCanvas = document.createElement('canvas'); expoCanvas.width = 64; expoCanvas.height = 36; }
+  const ec = expoCanvas.getContext('2d');
+  ec.drawImage(video, 0, 0, 64, 36);
+  const data = ec.getImageData(0, 0, 64, 36).data;
+  let sum = 0, n = 0, clipHi = 0, clipLo = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    const lum = data[i] * 0.299 + data[i+1] * 0.587 + data[i+2] * 0.114;
+    sum += lum; n++;
+    if (lum >= 248) clipHi++;
+    if (lum <= 6)   clipLo++;
+  }
+  const mean = sum / n, hi = clipHi / n, lo = clipLo / n;
+
+  let state, key;
+  if (hi > 0.12 || mean > 210)            { state = 'err';  key = 'expoBright'; }
+  else if (lo > 0.55 || mean < 32)        { state = 'err';  key = 'expoDark'; }
+  else if (hi > 0.05 || mean > 190)       { state = 'warn'; key = 'expoBright'; }
+  else if (lo > 0.4  || mean < 55)        { state = 'warn'; key = 'expoDark'; }
+  else                                    { state = 'ok';   key = 'expoOk'; }
+
+  const el = document.getElementById('expo-indicator');
+  el.classList.remove('hidden', 'ok', 'warn', 'err');
+  el.classList.add(state);
+  document.getElementById('expo-txt').textContent = t(key);
 }
 
 // ─── Manual panel ─────────────────────────────────────────────────────────────
