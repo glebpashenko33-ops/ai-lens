@@ -171,6 +171,67 @@
     #screen-perm p { color: rgba(255,255,255,0.72); font-size: 17px; font-weight: 300; text-align: center; padding: 0 32px; }
     #screen-perm button { background: #fff; border: none; border-radius: 14px; padding: 13px 36px; font-size: 16px; font-weight: 600; color: #000; cursor: pointer; font-family: inherit; }
 
+    /* ════ HUB (Home / Presets / Learn / Profile) ════ */
+    #screen-hub { background: #0a0b0d; display: flex; flex-direction: column; }
+    #hub-content { flex: 1; overflow-y: auto; scrollbar-width: none; padding: calc(env(safe-area-inset-top,20px) + 16px) 18px 96px; }
+    #hub-content::-webkit-scrollbar { display: none; }
+    .hub-page { display: none; }
+    .hub-page.active { display: block; animation: fadeUp 0.3s ease; }
+    @keyframes fadeUp { from { opacity:0; transform: translateY(8px);} to { opacity:1; transform:none; } }
+
+    .hub-greeting { font-size: 26px; font-weight: 700; color: #fff; letter-spacing: -0.3px; }
+    .hub-sub { font-size: 14px; color: rgba(255,255,255,0.4); margin-top: 4px; margin-bottom: 22px; }
+    .hub-h2 { font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 1px; margin: 24px 0 12px; display: flex; justify-content: space-between; align-items: center; }
+    .hub-h2 .see-all { font-size: 12px; color: #f5b942; font-weight: 600; text-transform: none; letter-spacing: 0; cursor: pointer; }
+
+    /* Hero quick-start card */
+    .hero-card { position: relative; border-radius: 20px; overflow: hidden; padding: 22px; background: linear-gradient(135deg,#2a2150,#191a2e); border: 1px solid rgba(255,255,255,0.08); }
+    .hero-card .hc-badge { font-size: 11px; font-weight: 700; color: #c9b6ff; letter-spacing: 1px; text-transform: uppercase; }
+    .hero-card .hc-title { font-size: 21px; font-weight: 700; color: #fff; margin: 8px 0 4px; }
+    .hero-card .hc-desc { font-size: 13px; color: rgba(255,255,255,0.55); line-height: 1.4; margin-bottom: 16px; }
+    .hc-btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 20px; border-radius: 12px; background: #fff; color: #111; font-size: 14px; font-weight: 700; border: none; cursor: pointer; font-family: inherit; }
+    .hc-btn:active { opacity: 0.8; }
+
+    /* Scenario cards (grid, with image gradient) */
+    .scn-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 12px; }
+    .scn-tile { position: relative; border-radius: 16px; overflow: hidden; aspect-ratio: 3/2.2; cursor: pointer; border: 1px solid rgba(255,255,255,0.07); transition: transform 0.15s; }
+    .scn-tile:active { transform: scale(0.97); }
+    .scn-tile .st-bg { position: absolute; inset: 0; }
+    .scn-tile .st-shade { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.1) 60%); }
+    .scn-tile .st-icon { position: absolute; top: 12px; left: 12px; font-size: 22px; }
+    .scn-tile .st-body { position: absolute; left: 13px; right: 13px; bottom: 12px; }
+    .scn-tile .st-name { font-size: 15px; font-weight: 700; color: #fff; }
+    .scn-tile .st-meta { font-size: 11px; color: rgba(255,255,255,0.6); margin-top: 2px; font-variant-numeric: tabular-nums; }
+
+    /* Tip / learn list cards */
+    .info-card { display: flex; gap: 13px; align-items: center; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; padding: 13px 15px; margin-bottom: 10px; cursor: pointer; transition: background 0.15s; }
+    .info-card:active { background: rgba(255,255,255,0.1); }
+    .info-ic { width: 40px; height: 40px; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-size: 19px; flex-shrink: 0; background: rgba(245,185,66,0.14); }
+    .info-tx { flex: 1; }
+    .info-tt { font-size: 14px; font-weight: 600; color: #fff; }
+    .info-ds { font-size: 12px; color: rgba(255,255,255,0.45); margin-top: 2px; line-height: 1.35; }
+    .info-arrow { color: rgba(255,255,255,0.25); font-size: 18px; }
+
+    /* Profile fields reuse .field / .field-lbl */
+    .prof-row { display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; }
+    .prof-row .pr-label { font-size: 14px; color: rgba(255,255,255,0.8); }
+    .prof-row .pr-val { font-size: 13px; color: rgba(255,255,255,0.4); }
+    .lang-select { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: #fff; padding: 8px 12px; font-family: inherit; font-size: 14px; outline: none; }
+
+    /* ════ Bottom tab bar ════ */
+    #tab-bar { display: flex; align-items: center; justify-content: space-around; background: rgba(14,15,17,0.92); backdrop-filter: blur(20px); border-top: 1px solid rgba(255,255,255,0.07); padding: 8px 6px calc(env(safe-area-inset-bottom,12px) + 8px); }
+    .tab-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; background: none; border: none; color: rgba(255,255,255,0.4); font-family: inherit; cursor: pointer; padding: 4px 0; transition: color 0.18s; }
+    .tab-btn .tb-ic { font-size: 19px; line-height: 1; }
+    .tab-btn .tb-lb { font-size: 10px; font-weight: 600; letter-spacing: 0.2px; }
+    .tab-btn.active { color: #f5b942; }
+    .tab-cam { flex: 0 0 auto; }
+    .tab-cam .tb-ic { width: 52px; height: 52px; border-radius: 16px; background: linear-gradient(160deg,#ff5b50,#e0271c); display: flex; align-items: center; justify-content: center; font-size: 22px; color: #fff; margin-top: -18px; box-shadow: 0 6px 18px rgba(224,39,28,0.4); border: 3px solid #0a0b0d; }
+
+    /* Camera back button */
+    .cam-back { width: 36px; height: 36px; border-radius: 9px; background: rgba(14,15,17,0.72); border: 1px solid rgba(255,255,255,0.07); color: rgba(255,255,255,0.8); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(20px); box-shadow: 0 1px 7px rgba(0,0,0,0.45); margin-right: 8px; flex-shrink: 0; }
+    .cam-back:active { background: rgba(255,255,255,0.18); }
+    .top-left { display: flex; align-items: center; }
+
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.25} }
     @keyframes pulse-rec { 0%,100%{transform:scale(1)} 50%{transform:scale(1.07)} }
   </style>
@@ -226,11 +287,14 @@
 
   <!-- Top bar -->
   <div id="top-bar">
-    <div class="status-chips">
-      <div class="chip" id="chip-wb">5600K</div>
-      <div class="chip" id="chip-iso">ISO 800</div>
-      <div class="chip" id="chip-sh">180°</div>
-      <div class="chip" id="chip-fps">24fps</div>
+    <div class="top-left">
+      <button class="cam-back" onclick="leaveCamera()">‹</button>
+      <div class="status-chips">
+        <div class="chip" id="chip-wb">5600K</div>
+        <div class="chip" id="chip-iso">ISO 800</div>
+        <div class="chip" id="chip-sh">180°</div>
+        <div class="chip" id="chip-fps">24fps</div>
+      </div>
     </div>
     <button class="top-btn" onclick="openSettings()">⚙</button>
   </div>
@@ -292,6 +356,70 @@
   <div id="toast"></div>
 </div>
 
+<!-- SCREEN: Hub (Home / Presets / Learn / Profile) -->
+<div id="screen-hub" class="screen hidden">
+  <div id="hub-content">
+    <!-- HOME -->
+    <div class="hub-page" id="page-home">
+      <div class="hub-greeting" id="home-greeting">Hello, creator!</div>
+      <div class="hub-sub" id="home-sub">What are we filming today?</div>
+
+      <div class="hero-card">
+        <div class="hc-badge" id="home-qs-badge">Quick start</div>
+        <div class="hc-title" id="home-qs-title">AI Camera Operator</div>
+        <div class="hc-desc" id="home-qs-desc">Pick a scenario and let AI tune the look automatically.</div>
+        <button class="hc-btn" onclick="openCameraScreen()"><span>●</span><span id="home-qs-btn">Open camera</span></button>
+      </div>
+
+      <div class="hub-h2"><span id="home-scn-h">Scenarios</span><span class="see-all" onclick="switchTab('presets')" id="home-seeall">See all</span></div>
+      <div class="scn-grid" id="home-scn-grid"></div>
+
+      <div class="hub-h2"><span id="home-tips-h">Useful</span></div>
+      <div id="home-tips"></div>
+    </div>
+
+    <!-- PRESETS -->
+    <div class="hub-page" id="page-presets">
+      <div class="hub-greeting" id="presets-h">Scenarios</div>
+      <div class="hub-sub" id="presets-sub">Ready-made professional setups</div>
+      <div class="scn-grid" id="presets-grid" style="margin-top:18px"></div>
+    </div>
+
+    <!-- LEARN -->
+    <div class="hub-page" id="page-learn">
+      <div class="hub-greeting" id="learn-h">Learn</div>
+      <div class="hub-sub" id="learn-sub">Short guides to shoot better</div>
+      <div id="learn-list" style="margin-top:18px"></div>
+    </div>
+
+    <!-- PROFILE -->
+    <div class="hub-page" id="page-profile">
+      <div class="hub-greeting" id="profile-h">Profile</div>
+      <div class="hub-sub" id="profile-sub">Settings & preferences</div>
+      <div style="margin-top:20px">
+        <div class="field-lbl" id="profile-lang-lbl">Language</div>
+        <div class="prof-row">
+          <span class="pr-label" id="profile-lang-name">English</span>
+          <select class="lang-select" id="profile-lang-select" onchange="changeLanguage(this.value)"></select>
+        </div>
+        <div class="field-lbl" style="margin-top:18px" data-t="apiKey">Anthropic API Key</div>
+        <input type="password" class="field" id="profile-api-field" placeholder="sk-ant-...">
+        <div class="field-hint" id="profile-api-hint" data-t="apiHint">Stored only in your browser.</div>
+        <button class="save-btn" onclick="saveProfileKey()" data-t="save">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab bar -->
+  <nav id="tab-bar">
+    <button class="tab-btn" data-tab="home" onclick="switchTab('home')"><span class="tb-ic">⌂</span><span class="tb-lb" id="tab-home">Home</span></button>
+    <button class="tab-btn" data-tab="presets" onclick="switchTab('presets')"><span class="tb-ic">▦</span><span class="tb-lb" id="tab-presets">Presets</span></button>
+    <button class="tab-btn tab-cam" data-tab="camera" onclick="openCameraScreen()"><span class="tb-ic">●</span></button>
+    <button class="tab-btn" data-tab="learn" onclick="switchTab('learn')"><span class="tb-ic">▤</span><span class="tb-lb" id="tab-learn">Learn</span></button>
+    <button class="tab-btn" data-tab="profile" onclick="switchTab('profile')"><span class="tb-ic">○</span><span class="tb-lb" id="tab-profile">Profile</span></button>
+  </nav>
+</div>
+
 <!-- PANEL: Manual controls -->
 <div class="overlay-panel hidden" id="panel-manual">
   <div class="sheet">
@@ -329,8 +457,12 @@
 <script>
 // ─── Translations ─────────────────────────────────────────────────────────────
 const T = {
-  en: { chooseLanguage:'Choose your language', aiAuto:'AI AUTO', aiOff:'AI OFF', aiControlling:'AI is controlling', takeManual:'Take manual control', letAI:'Let AI take over', manual:'MANUAL', settings:'Settings', save:'Save', reset:'Reset', exposure:'Exposure', whiteBalance:'White Balance', color:'Color', grade:'Grade', lut:'LUT', iso:'ISO', shutter:'Shutter', frameRate:'Frame Rate', temperature:'Temperature', tint:'Tint', saturation:'Saturation', contrast:'Contrast', pivot:'Pivot', lift:'Lift', gamma:'Gamma', gain:'Gain', natural:'Natural', film:'Film', cinematic:'Cinematic', portrait:'Portrait', night:'Night', golden:'Golden', videoSaved:'✓ Video saved', camUnavailable:'Camera unavailable', apiKey:'Anthropic API Key', apiHint:'Get key: console.anthropic.com', vignette:'Vignette', filmGrain:'Film Grain', hue:'Hue', red:'R', green:'G', blue:'B', scenarios:'Scenarios', scNight:'Night Street', scPortrait:'Portrait', scGolden:'Golden Hour', scInterview:'Interview', scFood:'Food', scBlog:'Home Vlog', scApplied:'applied' },
-  ru: { chooseLanguage:'Выберите язык', aiAuto:'ИИ АВТО', aiOff:'ИИ ВЫКЛ', aiControlling:'ИИ управляет', takeManual:'Взять управление', letAI:'Доверить ИИ', manual:'РУЧНОЙ', settings:'Настройки', save:'Сохранить', reset:'Сбросить', exposure:'Экспозиция', whiteBalance:'Баланс белого', color:'Цвет', grade:'Грейдинг', lut:'LUT', iso:'ISO', shutter:'Затвор', frameRate:'Частота кадров', temperature:'Температура', tint:'Оттенок', saturation:'Насыщенность', contrast:'Контраст', pivot:'Опора', lift:'Лифт', gamma:'Гамма', gain:'Гейн', natural:'Нейтральный', film:'Плёнка', cinematic:'Кино', portrait:'Портрет', night:'Ночь', golden:'Золотой', videoSaved:'✓ Видео сохранено', camUnavailable:'Камера недоступна', apiKey:'Ключ Anthropic API', apiHint:'Получить: console.anthropic.com', vignette:'Виньетка', filmGrain:'Зерно', hue:'Тон', red:'К', green:'З', blue:'С', scenarios:'Сценарии', scNight:'Ночная улица', scPortrait:'Портрет', scGolden:'Закат', scInterview:'Интервью', scFood:'Еда', scBlog:'Влог дома', scApplied:'применён' },
+  en: { chooseLanguage:'Choose your language', aiAuto:'AI AUTO', aiOff:'AI OFF', aiControlling:'AI is controlling', takeManual:'Take manual control', letAI:'Let AI take over', manual:'MANUAL', settings:'Settings', save:'Save', reset:'Reset', exposure:'Exposure', whiteBalance:'White Balance', color:'Color', grade:'Grade', lut:'LUT', iso:'ISO', shutter:'Shutter', frameRate:'Frame Rate', temperature:'Temperature', tint:'Tint', saturation:'Saturation', contrast:'Contrast', pivot:'Pivot', lift:'Lift', gamma:'Gamma', gain:'Gain', natural:'Natural', film:'Film', cinematic:'Cinematic', portrait:'Portrait', night:'Night', golden:'Golden', videoSaved:'✓ Video saved', camUnavailable:'Camera unavailable', apiKey:'Anthropic API Key', apiHint:'Get key: console.anthropic.com', vignette:'Vignette', filmGrain:'Film Grain', hue:'Hue', red:'R', green:'G', blue:'B', scenarios:'Scenarios', scNight:'Night Street', scPortrait:'Portrait', scGolden:'Golden Hour', scInterview:'Interview', scFood:'Food', scBlog:'Home Vlog', scApplied:'applied',
+    homeGreeting:'Hello, creator!', homeSub:'What are we filming today?', qsBadge:'Quick start', qsTitle:'AI Camera Operator', qsDesc:'Open the camera and let AI tune the cinematic look automatically.', qsBtn:'Open camera', tipsH:'Useful', seeAll:'See all', presetsSub:'Ready-made professional setups', learnTitle:'Learn', learnSub:'Short guides to shoot better', profileTitle:'Profile', profileSub:'Settings & preferences', langLabel:'Language', tabHome:'Home', tabPresets:'Presets', tabLearn:'Learn', tabProfile:'Profile',
+    tipShakyT:'Why is video shaky?', tipShakyD:'5 tips for smoother footage', tipExpoT:'How to set exposure', tipExpoD:'Keep the histogram in range', tipLogT:'Why shoot in Log', tipLogD:'More dynamic range to grade', tipFpsT:'How to choose FPS', tipFpsD:'24 for cinema, 60 for slow-mo', tipBokehT:'How to blur the background', tipBokehD:'Distance, light and lens choice' },
+  ru: { chooseLanguage:'Выберите язык', aiAuto:'ИИ АВТО', aiOff:'ИИ ВЫКЛ', aiControlling:'ИИ управляет', takeManual:'Взять управление', letAI:'Доверить ИИ', manual:'РУЧНОЙ', settings:'Настройки', save:'Сохранить', reset:'Сбросить', exposure:'Экспозиция', whiteBalance:'Баланс белого', color:'Цвет', grade:'Грейдинг', lut:'LUT', iso:'ISO', shutter:'Затвор', frameRate:'Частота кадров', temperature:'Температура', tint:'Оттенок', saturation:'Насыщенность', contrast:'Контраст', pivot:'Опора', lift:'Лифт', gamma:'Гамма', gain:'Гейн', natural:'Нейтральный', film:'Плёнка', cinematic:'Кино', portrait:'Портрет', night:'Ночь', golden:'Золотой', videoSaved:'✓ Видео сохранено', camUnavailable:'Камера недоступна', apiKey:'Ключ Anthropic API', apiHint:'Получить: console.anthropic.com', vignette:'Виньетка', filmGrain:'Зерно', hue:'Тон', red:'К', green:'З', blue:'С', scenarios:'Сценарии', scNight:'Ночная улица', scPortrait:'Портрет', scGolden:'Закат', scInterview:'Интервью', scFood:'Еда', scBlog:'Влог дома', scApplied:'применён',
+    homeGreeting:'Привет, создатель!', homeSub:'Что будем снимать сегодня?', qsBadge:'Быстрый старт', qsTitle:'ИИ-оператор камеры', qsDesc:'Открой камеру и доверь ИИ выставить киношный вид автоматически.', qsBtn:'Открыть камеру', tipsH:'Полезное', seeAll:'Все', presetsSub:'Готовые профессиональные настройки', learnTitle:'Обучение', learnSub:'Короткие гайды, чтобы снимать лучше', profileTitle:'Профиль', profileSub:'Настройки и параметры', langLabel:'Язык', tabHome:'Главная', tabPresets:'Пресеты', tabLearn:'Обучение', tabProfile:'Профиль',
+    tipShakyT:'Почему видео дёргается?', tipShakyD:'5 советов для плавности', tipExpoT:'Как настроить экспозицию', tipExpoD:'Держи гистограмму в диапазоне', tipLogT:'Зачем снимать в Log', tipLogD:'Больше запаса для цветокоррекции', tipFpsT:'Как выбрать FPS', tipFpsD:'24 для кино, 60 для слоумо', tipBokehT:'Как размыть фон', tipBokehD:'Дистанция, свет и выбор линзы' },
   de: { chooseLanguage:'Sprache wählen', aiAuto:'KI AUTO', aiOff:'KI AUS', aiControlling:'KI steuert', takeManual:'Manuell', letAI:'KI überlassen', manual:'MANUELL', settings:'Einstellungen', save:'Speichern', reset:'Zurücksetzen', exposure:'Belichtung', whiteBalance:'Weißabgleich', color:'Farbe', grade:'Grading', lut:'LUT', iso:'ISO', shutter:'Verschluss', frameRate:'Bildrate', temperature:'Temperatur', tint:'Tönung', saturation:'Sättigung', contrast:'Kontrast', pivot:'Pivot', lift:'Lift', gamma:'Gamma', gain:'Gain', natural:'Natürlich', film:'Film', cinematic:'Kino', portrait:'Porträt', night:'Nacht', golden:'Golden', videoSaved:'✓ Video gespeichert', camUnavailable:'Kamera nicht verfügbar', apiKey:'Anthropic API-Schlüssel', apiHint:'Schlüssel: console.anthropic.com', vignette:'Vignette', filmGrain:'Filmkorn', hue:'Farbton', red:'R', green:'G', blue:'B' },
   fr: { chooseLanguage:'Choisissez votre langue', aiAuto:'IA AUTO', aiOff:'IA OFF', aiControlling:"L'IA contrôle", takeManual:'Contrôle manuel', letAI:"Laisser l'IA", manual:'MANUEL', settings:'Paramètres', save:'Enregistrer', reset:'Réinitialiser', exposure:'Exposition', whiteBalance:'Balance des blancs', color:'Couleur', grade:'Étalonnage', lut:'LUT', iso:'ISO', shutter:'Obturateur', frameRate:'Fréq. images', temperature:'Température', tint:'Teinte', saturation:'Saturation', contrast:'Contraste', pivot:'Pivot', lift:'Lift', gamma:'Gamma', gain:'Gain', natural:'Naturel', film:'Film', cinematic:'Cinéma', portrait:'Portrait', night:'Nuit', golden:'Doré', videoSaved:'✓ Vidéo sauvegardée', camUnavailable:'Caméra indisponible', apiKey:'Clé API Anthropic', apiHint:'Obtenir: console.anthropic.com', vignette:'Vignette', filmGrain:'Grain', hue:'Teinte', red:'R', green:'V', blue:'B' },
   es: { chooseLanguage:'Elige tu idioma', aiAuto:'IA AUTO', aiOff:'IA OFF', aiControlling:'IA controlando', takeManual:'Control manual', letAI:'Dejar a la IA', manual:'MANUAL', settings:'Ajustes', save:'Guardar', reset:'Restablecer', exposure:'Exposición', whiteBalance:'Balance de blancos', color:'Color', grade:'Gradación', lut:'LUT', iso:'ISO', shutter:'Obturador', frameRate:'Fotogramas/s', temperature:'Temperatura', tint:'Tinte', saturation:'Saturación', contrast:'Contraste', pivot:'Pivote', lift:'Lift', gamma:'Gamma', gain:'Gain', natural:'Natural', film:'Película', cinematic:'Cinemático', portrait:'Retrato', night:'Noche', golden:'Dorado', videoSaved:'✓ Vídeo guardado', camUnavailable:'Cámara no disponible', apiKey:'Clave API Anthropic', apiHint:'Obtener: console.anthropic.com', vignette:'Viñeta', filmGrain:'Grano', hue:'Matiz', red:'R', green:'G', blue:'B' },
@@ -369,6 +501,25 @@ const SCENARIOS = {
   scBlog:      { icon:'🏠', cam:{ iso:800, shutterAngle:180, fps:30, temperature:5000, tint:3 },
                  grade:{ exposure:0.1, contrast:1.02, saturation:1.06, lift:{r:0.005,g:0,b:0.005}, gamma:{r:0.01,g:0,b:0}, gain:{r:1.02,g:1,b:0.99}, vignette:0.08, filmGrain:0, lut:'natural' } },
 };
+
+// Card background gradients (mood per scenario — no image assets needed)
+const SCN_BG = {
+  scNight:     'linear-gradient(135deg,#16284d 0%,#3a1640 100%)',
+  scPortrait:  'linear-gradient(135deg,#5a4030 0%,#2a1813 100%)',
+  scGolden:    'linear-gradient(135deg,#c06a1e 0%,#5a2410 100%)',
+  scInterview: 'linear-gradient(135deg,#2a3a4c 0%,#181f28 100%)',
+  scFood:      'linear-gradient(135deg,#7a3c1c 0%,#33150c 100%)',
+  scBlog:      'linear-gradient(135deg,#374a5a 0%,#1e2730 100%)',
+};
+
+// Learn lessons (UI now; AI-generated explanations can be added later)
+const LESSONS = [
+  { ic:'📹', t:'tipShakyT', d:'tipShakyD' },
+  { ic:'📊', t:'tipExpoT',  d:'tipExpoD' },
+  { ic:'🎞️', t:'tipLogT',   d:'tipLogD' },
+  { ic:'🎬', t:'tipFpsT',   d:'tipFpsD' },
+  { ic:'🔮', t:'tipBokehT', d:'tipBokehD' },
+];
 
 const LANGUAGES = [
   { code:'en', flag:'🇺🇸', name:'English' },
@@ -447,11 +598,109 @@ function buildLangScreen() {
 function selectLanguage(code) {
   S.lang = code;
   localStorage.setItem('ailens_lang', code);
-  showCamera();
+  document.getElementById('screen-lang').classList.add('hidden');
+  showHub('home');
+}
+
+// ─── Hub navigation (Home / Presets / Learn / Profile) ────────────────────────
+function showHub(tab) {
+  document.getElementById('screen-lang').classList.add('hidden');
+  document.getElementById('screen-camera').classList.add('hidden');
+  document.getElementById('screen-hub').classList.remove('hidden');
+  applyTranslations();
+  buildHubTexts();
+  switchTab(tab || 'home');
+}
+
+function switchTab(tab) {
+  ['home','presets','learn','profile'].forEach(p => {
+    document.getElementById('page-' + p).classList.toggle('active', p === tab);
+  });
+  document.querySelectorAll('#tab-bar .tab-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === tab);
+  });
+  if (tab === 'home') { buildScenarioTiles('home-scn-grid', 4); buildLearn('home-tips', 2); }
+  else if (tab === 'presets') buildScenarioTiles('presets-grid', 99);
+  else if (tab === 'learn') buildLearn('learn-list', 99);
+  else if (tab === 'profile') buildProfile();
+  document.getElementById('hub-content').scrollTop = 0;
+}
+
+function buildHubTexts() {
+  const set = (id, key) => { const el = document.getElementById(id); if (el) el.textContent = t(key); };
+  set('home-greeting','homeGreeting'); set('home-sub','homeSub');
+  set('home-qs-badge','qsBadge'); set('home-qs-title','qsTitle'); set('home-qs-desc','qsDesc'); set('home-qs-btn','qsBtn');
+  set('home-scn-h','scenarios'); set('home-seeall','seeAll'); set('home-tips-h','tipsH');
+  set('presets-h','scenarios'); set('presets-sub','presetsSub');
+  set('learn-h','learnTitle'); set('learn-sub','learnSub');
+  set('profile-h','profileTitle'); set('profile-sub','profileSub'); set('profile-lang-lbl','langLabel');
+  set('tab-home','tabHome'); set('tab-presets','tabPresets'); set('tab-learn','tabLearn'); set('tab-profile','tabProfile');
+}
+
+function buildScenarioTiles(containerId, limit) {
+  const grid = document.getElementById(containerId);
+  if (!grid) return;
+  grid.innerHTML = '';
+  Object.keys(SCENARIOS).slice(0, limit).forEach(key => {
+    const s = SCENARIOS[key];
+    const tile = document.createElement('div');
+    tile.className = 'scn-tile';
+    tile.innerHTML =
+      '<div class="st-bg" style="background:' + (SCN_BG[key] || '#222') + '"></div>' +
+      '<div class="st-shade"></div>' +
+      '<div class="st-icon">' + s.icon + '</div>' +
+      '<div class="st-body"><div class="st-name">' + t(key) + '</div>' +
+      '<div class="st-meta">ISO ' + s.cam.iso + ' · ' + s.cam.fps + 'fps</div></div>';
+    tile.onclick = () => openCameraScreen(key);
+    grid.appendChild(tile);
+  });
+}
+
+function buildLearn(containerId, limit) {
+  const box = document.getElementById(containerId);
+  if (!box) return;
+  box.innerHTML = '';
+  LESSONS.slice(0, limit).forEach(l => {
+    const card = document.createElement('div');
+    card.className = 'info-card';
+    card.innerHTML =
+      '<div class="info-ic">' + l.ic + '</div>' +
+      '<div class="info-tx"><div class="info-tt">' + t(l.t) + '</div>' +
+      '<div class="info-ds">' + t(l.d) + '</div></div>' +
+      '<div class="info-arrow">›</div>';
+    box.appendChild(card);
+  });
+}
+
+function buildProfile() {
+  const sel = document.getElementById('profile-lang-select');
+  sel.innerHTML = '';
+  LANGUAGES.forEach(l => {
+    const o = document.createElement('option');
+    o.value = l.code; o.textContent = l.flag + ' ' + l.name;
+    if (l.code === S.lang) o.selected = true;
+    sel.appendChild(o);
+  });
+  document.getElementById('profile-api-field').value = S.apiKey || '';
+}
+
+function changeLanguage(code) {
+  S.lang = code;
+  localStorage.setItem('ailens_lang', code);
+  applyTranslations();
+  buildHubTexts();
+  switchTab('profile');
+}
+
+function saveProfileKey() {
+  S.apiKey = document.getElementById('profile-api-field').value.trim();
+  localStorage.setItem('ailens_key', S.apiKey);
+  toast(t('save') + ' ✓');
 }
 
 // ─── Camera screen ────────────────────────────────────────────────────────────
-function showCamera() {
+function openCameraScreen(scenarioKey) {
+  document.getElementById('screen-hub').classList.add('hidden');
   document.getElementById('screen-lang').classList.add('hidden');
   document.getElementById('screen-camera').classList.remove('hidden');
   applyTranslations();
@@ -459,7 +708,22 @@ function showCamera() {
   updateTopChips();
   buildScenarios();
   initCamera();
+  if (scenarioKey) setTimeout(() => applyScenario(scenarioKey), 300);
 }
+
+function leaveCamera() {
+  if (S.isRecording) stopRecord();
+  S.renderRunning = false;
+  if (S.animFrame) cancelAnimationFrame(S.animFrame);
+  clearTimeout(S.aiTimer);
+  clearInterval(S.progressInterval);
+  if (S.stream) { S.stream.getTracks().forEach(tr => tr.stop()); S.stream = null; }
+  document.getElementById('screen-camera').classList.add('hidden');
+  showHub('home');
+}
+
+// Legacy entry — keep working
+function showCamera() { openCameraScreen(); }
 
 async function initCamera() {
   try {
@@ -761,6 +1025,7 @@ function startRenderLoop() {
   let grainT = 0;
 
   function frame() {
+    if (!S.renderRunning) return;
     S.animFrame = requestAnimationFrame(frame);
     S.frameCount++;
     const c = S.cur, tgt = S.tgt;
@@ -1098,7 +1363,7 @@ fetch('/api/config').then(r => r.json()).then(cfg => {
 }).catch(() => {});
 
 if (S.lang) {
-  showCamera();
+  showHub('home');
 } else {
   document.getElementById('screen-lang').classList.remove('hidden');
 }
